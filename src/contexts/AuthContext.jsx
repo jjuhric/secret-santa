@@ -1,6 +1,13 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { auth, googleProvider, db } from '../firebase';
-import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
+import { 
+  onAuthStateChanged, 
+  signInWithPopup, 
+  signOut,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail
+} from 'firebase/auth';
 import { doc, getDoc, setDoc, onSnapshot, collection, getDocs, limit, query } from 'firebase/firestore';
 
 const AuthContext = createContext();
@@ -17,6 +24,31 @@ export function AuthProvider({ children }) {
 
   function loginWithGoogle() {
     return signInWithPopup(auth, googleProvider);
+  }
+
+  function loginWithEmail(email, password) {
+    return signInWithEmailAndPassword(auth, email.toLowerCase().trim(), password);
+  }
+
+  async function activateEmailAccount(email, password) {
+    const cleanEmail = email.toLowerCase().trim();
+    // Verify that this email is an invited user in Firestore (or if it's the first ever user)
+    const userRef = doc(db, 'users', cleanEmail);
+    const snap = await getDoc(userRef);
+
+    if (!snap.exists()) {
+      const q = query(collection(db, 'users'), limit(1));
+      const allUsersSnap = await getDocs(q);
+      if (!allUsersSnap.empty) {
+        throw new Error("This email has not been invited. Please ask your family admin to invite you first.");
+      }
+    }
+
+    return createUserWithEmailAndPassword(auth, cleanEmail, password);
+  }
+
+  function resetPassword(email) {
+    return sendPasswordResetEmail(auth, email.toLowerCase().trim());
   }
 
   function logout() {
@@ -108,6 +140,9 @@ export function AuthProvider({ children }) {
     isUninvited,
     loading,
     loginWithGoogle,
+    loginWithEmail,
+    activateEmailAccount,
+    resetPassword,
     logout
   };
 

@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
-import { doc, onSnapshot, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, setDoc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { Link } from 'react-router-dom';
 import { Gift, CheckCircle, LogOut, Users, Plus, ShieldCheck, ExternalLink, Trash2, CheckSquare, Square, X } from 'lucide-react';
 import SetupWizard from './SetupWizard';
 import santaScrollIcon from '../assets/santa-scroll.jpg';
+import { sendInviteEmail } from '../utils/emailService';
 
 export default function Dashboard() {
   const { currentUser, userProfile, isAdmin, isMasterAdmin, isUninvited, logout } = useAuth();
@@ -68,13 +69,44 @@ export default function Dashboard() {
       where('familyId', '==', userProfile.familyId)
     );
 
-    const unsub = onSnapshot(q, (snapshot) => {
+    const unsub = onSnapshot(q, async (snapshot) => {
       const members = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
       // Filter out the active user themselves so they see the other family members to shop for
       setFamilyMembers(members.filter(m => m.id !== (userProfile.id || userProfile.email)));
-      // Managed kids for the profile switcher
-      setManagedKids(members.filter(m => m.isManaged));
+      // Managed kids for the profile switcher (exclude extra people)
+      setManagedKids(members.filter(m => m.isManaged && !m.isExtra));
       setLoading(false);
+
+      // Auto-sync: If user profile has extraPeople not yet in Firestore 'users', save them to family
+      if (userProfile?.extraPeople && Array.isArray(userProfile.extraPeople)) {
+        for (const ep of userProfile.extraPeople) {
+          const docId = ep.id || (ep.email ? ep.email.toLowerCase().trim() : null);
+          if (!docId) continue;
+          const existsInMembers = members.some(m => m.id === docId || (ep.email && m.email === ep.email));
+          if (!existsInMembers) {
+            try {
+              await setDoc(doc(db, 'users', docId), {
+                id: docId,
+                name: ep.name,
+                email: ep.email || null,
+                familyId: userProfile.familyId,
+                isAdmin: false,
+                role: 'user',
+                isManaged: !ep.email,
+                isExtra: true,
+                setupComplete: false,
+                wishlist: [],
+                recipientId: null,
+                purchasedMembers: {},
+                invitedBy: userProfile.name || userProfile.email || '',
+                createdAt: Date.now()
+              });
+            } catch (err) {
+              console.warn("Could not sync extra person to family:", err);
+            }
+          }
+        }
+      }
     });
 
     return () => unsub();
@@ -117,16 +149,55 @@ export default function Dashboard() {
     });
   }
 
-  // Add Extra Person to Buy For list
+  // Add Extra Person to Buy For list and create user document in the family
   async function handleAddExtraPerson(e) {
     e.preventDefault();
     if (!newExtraPersonName.trim() || !activeData) return;
     
-    const newPersonId = `extra_${Date.now()}`;
-    const newPerson = {
-      id: newPersonId,
+    const cleanEmail = newExtraPersonEmail.trim().toLowerCase() || null;
+    const docId = cleanEmail || `extra_${Date.now()}`;
+    const familyId = userProfile?.familyId || activeData?.familyId || '';
+    
+    const newPersonDoc = {
+      id: docId,
       name: newExtraPersonName.trim(),
-      email: newExtraPersonEmail.trim(),
+      email: cleanEmail,
+      familyId: familyId,
+      isAdmin: false,
+      role: 'user',
+      isManaged: !cleanEmail,
+      isExtra: true,
+      setupComplete: false,
+      wishlist: [],
+      recipientId: null,
+      purchasedMembers: {},
+      invitedBy: userProfile?.name || userProfile?.email || '',
+      createdAt: Date.now()
+    };
+
+    try {
+      await setDoc(doc(db, 'users', docId), newPersonDoc);
+      
+      if (cleanEmail) {
+        try {
+          await sendInviteEmail({
+            toEmail: cleanEmail,
+            toName: newExtraPersonName.trim(),
+            familyName: familyId,
+            invitedBy: userProfile?.name || userProfile?.email || 'Family Member'
+          });
+        } catch (mailErr) {
+          console.warn("Could not send invite to extra person:", mailErr);
+        }
+      }
+    } catch (err) {
+      console.error("Error creating extra user doc in family:", err);
+    }
+    
+    const newPerson = {
+      id: docId,
+      name: newExtraPersonName.trim(),
+      email: cleanEmail,
       isExtra: true
     };
     
@@ -220,10 +291,12 @@ export default function Dashboard() {
   
   // 2. Family Members
   familyMembers.forEach(member => {
+    if (recipientData && member.id === recipientData.id) return;
+
     buyForList.push({
       id: member.id,
       name: member.name,
-      type: 'family',
+      type: member.isExtra ? 'extra' : 'family',
       isManaged: member.isManaged,
       isBought: activeData?.purchasedMembers?.[member.id] || false,
       wishlist: member.wishlist || [],
@@ -231,17 +304,24 @@ export default function Dashboard() {
     });
   });
   
-  // 3. Extra People
+  // 3. Extra People (fallback for any not yet synced into familyMembers)
   if (activeData?.extraPeople) {
     activeData.extraPeople.forEach(person => {
-      buyForList.push({
-        id: person.id,
-        name: person.name,
-        type: 'extra',
-        isBought: activeData?.purchasedMembers?.[person.id] || false,
-        wishlist: [],
-        onToggle: () => toggleFamilyShopping(person.id)
-      });
+      const alreadyInList = buyForList.some(item => 
+        item.id === person.id || 
+        (person.email && item.email === person.email) ||
+        (person.name && item.name.toLowerCase() === person.name.toLowerCase() && item.type === 'extra')
+      );
+      if (!alreadyInList) {
+        buyForList.push({
+          id: person.id,
+          name: person.name,
+          type: 'extra',
+          isBought: activeData?.purchasedMembers?.[person.id] || false,
+          wishlist: [],
+          onToggle: () => toggleFamilyShopping(person.id)
+        });
+      }
     });
   }
 
@@ -454,7 +534,7 @@ export default function Dashboard() {
 
         {/* RULE 5: My Wishlist with Add Item */}
         <div className="glass-card" style={{ height: 'fit-content' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', gap: '1rem' }}>
             <div>
               <h2 style={{ fontSize: '1.25rem' }}>
                 {activeData?.name}'s Wishlist
@@ -468,9 +548,15 @@ export default function Dashboard() {
               <button 
                 className="btn btn-primary" 
                 onClick={() => setIsAddingItem(true)}
-                style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}
+                style={{ 
+                  padding: '0.4rem 0.85rem', 
+                  fontSize: '0.85rem', 
+                  whiteSpace: 'nowrap', 
+                  flexShrink: 0,
+                  borderRadius: '10px'
+                }}
               >
-                <Plus size={16} /> Add Item
+                <Plus size={15} /> Add Item
               </button>
             )}
           </div>

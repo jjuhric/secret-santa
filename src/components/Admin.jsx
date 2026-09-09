@@ -228,8 +228,30 @@ export default function Admin() {
     }
   }
 
+  function canDeleteUser(targetUser) {
+    if (!targetUser) return false;
+    if (isMasterAdmin) {
+      // Master admin can remove anyone except their own current account
+      return targetUser.id !== userProfile?.id;
+    }
+    // Family admin can only remove non-admin members of their own family
+    const sameFamily = (targetUser.familyId || '').toLowerCase() === (userProfile?.familyId || '').toLowerCase();
+    return sameFamily && !targetUser.isAdmin && !targetUser.isMaster;
+  }
+
   async function handleDelete(docId, userName) {
-    if (window.confirm(`Are you sure you want to remove "${userName}"?`)) {
+    const targetUser = users.find(u => u.id === docId);
+    if (targetUser && !canDeleteUser(targetUser)) {
+      alert("You do not have permission to remove this user.");
+      return;
+    }
+
+    const hasDraw = users.some(u => u.recipientId);
+    const drawWarning = hasDraw 
+      ? "\n\nWarning: Secret Santa assignments have already been made! Removing a member may affect the gift draw." 
+      : "";
+
+    if (window.confirm(`Are you sure you want to remove "${userName}"?${drawWarning}`)) {
       await deleteDoc(doc(db, 'users', docId));
       fetchUsers();
     }
@@ -597,6 +619,8 @@ export default function Admin() {
                       <span style={{ background: '#ec4899', color: 'white', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold' }}>Master</span>
                     ) : u.isAdmin ? (
                       <span style={{ background: '#8b5cf6', color: 'white', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold' }}>Admin</span>
+                    ) : u.isExtra ? (
+                      <span style={{ background: 'rgba(139, 92, 246, 0.25)', color: '#c084fc', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold', border: '1px solid rgba(139, 92, 246, 0.4)' }}>Extra</span>
                     ) : u.isManaged ? (
                       <span style={{ background: 'rgba(255,255,255,0.1)', color: '#cbd5e1', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.75rem' }}>Child</span>
                     ) : (
@@ -617,11 +641,12 @@ export default function Admin() {
                           <Send size={15} />
                         </button>
                       )}
-                      {/* Can delete if Master Admin or if user is non-admin */}
-                      {(isMasterAdmin || !u.isAdmin) && (
+                      {/* Can delete if Master Admin (except self) or if Family Admin and target is non-admin family member */}
+                      {canDeleteUser(u) && (
                         <button 
                           onClick={() => handleDelete(u.id, u.name)}
                           title="Delete User"
+                          data-testid={`delete-user-${u.id}`}
                           style={{ background: 'rgba(239,68,68,0.2)', border: 'none', color: '#ef4444', padding: '0.4rem', borderRadius: '6px', cursor: 'pointer' }}
                         >
                           <Trash2 size={15} />
