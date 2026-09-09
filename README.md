@@ -1,6 +1,6 @@
 # Christmas Shopping List
 
-![Santa Reading Scroll](./public/santa-icon.jpg)
+<img src="./public/santa-icon.jpg" alt="Santa Reading Scroll" width="200" />
 
 Welcome to the **Christmas Shopping List** application! This is a festive, family-oriented web app built to manage holiday gift assignments (previously known as Secret Santa). It features a beautiful snowfall aesthetic, a robust Master Admin panel for family management, and automated email notifications.
 

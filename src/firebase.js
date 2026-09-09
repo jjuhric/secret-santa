@@ -18,7 +18,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const googleProvider = new GoogleAuthProvider();
 
-if (import.meta.env.VITE_USE_EMULATOR === 'true') {
+if (import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true') {
   connectAuthEmulator(auth, "http://localhost:9099", { disableWarnings: true });
   connectFirestoreEmulator(db, 'localhost', 8080);
   console.log("Firebase Emulators Connected");
