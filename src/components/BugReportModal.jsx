@@ -1,24 +1,43 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
 import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
-import { Bug, X, Upload, CheckCircle2, AlertCircle, Info, Image as ImageIcon } from 'lucide-react';
+import { Bug, X, Upload, CheckCircle2, AlertCircle, Info, Image as ImageIcon, AlertTriangle } from 'lucide-react';
 import { sendBugReportEmail } from '../utils/emailService';
 
 // In-memory capture for recent uncaught runtime errors
 let lastCaughtError = null;
-if (typeof window !== 'undefined') {
+
+// Global error hook (runs once)
+if (typeof window !== 'undefined' && !window.__errorHookAttached) {
+  window.__errorHookAttached = true;
+
   window.addEventListener('error', (event) => {
-    lastCaughtError = `${event.message} at ${event.filename}:${event.lineno}:${event.colno}`;
+    const err = `${event.message} at ${event.filename}:${event.lineno}:${event.colno}`;
+    lastCaughtError = err;
+    window.dispatchEvent(new CustomEvent('app-error', { detail: err }));
   });
+
   window.addEventListener('unhandledrejection', (event) => {
-    lastCaughtError = `Unhandled Promise Rejection: ${event.reason?.message || event.reason}`;
+    const err = `Unhandled Promise Rejection: ${event.reason?.message || event.reason}`;
+    lastCaughtError = err;
+    window.dispatchEvent(new CustomEvent('app-error', { detail: err }));
   });
+
+  const originalConsoleError = console.error;
+  console.error = (...args) => {
+    originalConsoleError.apply(console, args);
+    const msg = args.map(a => (typeof a === 'object' ? (a?.message || JSON.stringify(a)) : String(a))).join(' ');
+    lastCaughtError = msg;
+    window.dispatchEvent(new CustomEvent('app-error', { detail: msg }));
+  };
 }
 
 export default function BugReportModal() {
   const { currentUser, userProfile } = useAuth();
 
+  // Hidden by default; shown only when an error occurs
+  const [isVisible, setIsVisible] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [description, setDescription] = useState('');
   const [screenshot, setScreenshot] = useState(null);
@@ -31,6 +50,43 @@ export default function BugReportModal() {
 
   // Metadata to trace
   const [metaInfo, setMetaInfo] = useState({});
+
+  const timerRef = useRef(null);
+
+  // Reset or start the 1-minute (60s) countdown timer
+  const resetTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
+    timerRef.current = setTimeout(() => {
+      // Only hide if the user hasn't kept the modal open
+      setIsVisible((currentVisible) => {
+        setIsOpen((currentOpen) => {
+          if (!currentOpen) {
+            return false;
+          }
+          return currentOpen;
+        });
+        return false;
+      });
+    }, 60000); // 1 minute
+  }, []);
+
+  // Listen for errors
+  useEffect(() => {
+    function onErrorTriggered(e) {
+      const errorDetail = e.detail || 'An unexpected error was detected.';
+      lastCaughtError = errorDetail;
+      setIsVisible(true);
+      resetTimer();
+    }
+
+    window.addEventListener('app-error', onErrorTriggered);
+    return () => {
+      window.removeEventListener('app-error', onErrorTriggered);
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [resetTimer]);
 
   useEffect(() => {
     if (isOpen) {
@@ -186,59 +242,75 @@ export default function BugReportModal() {
   function handleDismissSuccess() {
     setShowSuccessPopup(false);
     setIsOpen(false);
+    setIsVisible(false); // Hide the bug report button immediately upon clicking OK
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
+  }
+
+  function handleCloseModal() {
+    setIsOpen(false);
+    resetTimer(); // Resume the 1-minute countdown
   }
 
   return (
     <>
-      {/* Pull-out Style Tab on the Edge of Screen */}
-      <button
-        onClick={() => setIsOpen(true)}
-        aria-label="Report a bug"
-        style={{
-          position: 'fixed',
-          top: '45%',
-          right: 0,
-          transform: 'translateY(-50%)',
-          zIndex: 9990,
-          background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-          color: 'white',
-          border: 'none',
-          borderTopLeftRadius: '14px',
-          borderBottomLeftRadius: '14px',
-          padding: '0.75rem 0.6rem 0.75rem 0.8rem',
-          boxShadow: '-4px 4px 20px rgba(239, 68, 68, 0.45)',
-          cursor: 'pointer',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '0.4rem',
-          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-          fontFamily: 'inherit'
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.paddingRight = '1rem';
-          e.currentTarget.style.boxShadow = '-6px 6px 25px rgba(239, 68, 68, 0.6)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.paddingRight = '0.6rem';
-          e.currentTarget.style.boxShadow = '-4px 4px 20px rgba(239, 68, 68, 0.45)';
-        }}
-        title="Report a Bug to Master Admin"
-      >
-        <Bug size={22} color="#ffffff" style={{ animation: 'pulse 2s infinite' }} />
-        <span 
-          style={{ 
-            writingMode: 'vertical-rl', 
-            textOrientation: 'mixed', 
-            fontSize: '0.75rem', 
-            fontWeight: '700', 
-            letterSpacing: '1px',
-            textTransform: 'uppercase'
+      {/* Pull-out Style Tab on the Edge of Screen - HIDDEN by default; only shown when an error occurs */}
+      {isVisible && (
+        <button
+          onClick={() => {
+            setIsOpen(true);
+            resetTimer();
           }}
+          onMouseEnter={resetTimer}
+          aria-label="Report a bug"
+          style={{
+            position: 'fixed',
+            top: '45%',
+            right: 0,
+            transform: 'translateY(-50%)',
+            zIndex: 9990,
+            background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+            color: 'white',
+            border: 'none',
+            borderTopLeftRadius: '14px',
+            borderBottomLeftRadius: '14px',
+            padding: '0.75rem 0.6rem 0.75rem 0.8rem',
+            boxShadow: '-4px 4px 20px rgba(239, 68, 68, 0.45)',
+            cursor: 'pointer',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '0.4rem',
+            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+            fontFamily: 'inherit'
+          }}
+          onMouseEnter={(e) => {
+            resetTimer();
+            e.currentTarget.style.paddingRight = '1rem';
+            e.currentTarget.style.boxShadow = '-6px 6px 25px rgba(239, 68, 68, 0.6)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.paddingRight = '0.6rem';
+            e.currentTarget.style.boxShadow = '-4px 4px 20px rgba(239, 68, 68, 0.45)';
+          }}
+          title="Issue detected! Click to report to Master Admin (auto-hides in 1 min if inactive)"
         >
-          Report Bug
-        </span>
-      </button>
+          <Bug size={22} color="#ffffff" style={{ animation: 'pulse 1.5s infinite' }} />
+          <span 
+            style={{ 
+              writingMode: 'vertical-rl', 
+              textOrientation: 'mixed', 
+              fontSize: '0.75rem', 
+              fontWeight: '700', 
+              letterSpacing: '1px',
+              textTransform: 'uppercase'
+            }}
+          >
+            Report Bug
+          </span>
+        </button>
+      )}
 
       {/* Bug Report Modal Backdrop & Window */}
       {isOpen && (
@@ -256,12 +328,17 @@ export default function BugReportModal() {
             padding: '1rem',
             overflowY: 'auto'
           }}
+          onMouseMove={resetTimer}
+          onKeyDown={resetTimer}
           onClick={(e) => {
-            if (e.target === e.currentTarget && !submitting) setIsOpen(false);
+            resetTimer();
+            if (e.target === e.currentTarget && !submitting) handleCloseModal();
           }}
         >
           <div 
             className="glass-card" 
+            onMouseMove={resetTimer}
+            onClick={resetTimer}
             style={{
               maxWidth: '560px',
               width: '100%',
@@ -275,7 +352,7 @@ export default function BugReportModal() {
           >
             {/* Close Button */}
             <button 
-              onClick={() => setIsOpen(false)}
+              onClick={handleCloseModal}
               disabled={submitting}
               style={{
                 position: 'absolute',
@@ -471,7 +548,7 @@ export default function BugReportModal() {
               <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
                 <button
                   type="button"
-                  onClick={() => setIsOpen(false)}
+                  onClick={handleCloseModal}
                   disabled={submitting}
                   className="btn"
                   style={{ background: 'rgba(255, 255, 255, 0.1)', color: 'white' }}
