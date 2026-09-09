@@ -481,4 +481,7 @@ export default function Dashboard() {
             </div>
           )}
         </div>
-\n    </div>\n  );\n}\n
+      </div>
+    </div>
+  );
+}
