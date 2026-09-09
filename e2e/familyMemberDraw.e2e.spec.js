@@ -38,12 +38,17 @@ test.describe('Family Member Draw E2E Flow', () => {
     
     try {
       if (!popup.isClosed()) {
-        const userBtn = popup.locator('text=admin@example.com').first();
-        await userBtn.waitFor({ state: 'visible', timeout: 3000 });
+        const userBtn = popup.locator('text=/admin@example.com/i').first();
+        await userBtn.waitFor({ state: 'visible', timeout: 5000 });
         await userBtn.click();
       }
     } catch (e) {
       console.log('Popup closed or user button not found');
+    }
+
+    // Wait for the popup to close completely
+    while (!popup.isClosed()) {
+       await adminPage.waitForTimeout(500);
     }
 
     // Complete setup wizard for Admin
@@ -107,12 +112,17 @@ test.describe('Family Member Draw E2E Flow', () => {
     
     try {
       if (!userPopup.isClosed()) {
-        const userBtn2 = userPopup.locator('text=user3@example.com').first();
-        await userBtn2.waitFor({ state: 'visible', timeout: 3000 });
+        const userBtn2 = userPopup.locator('text=/user3@example.com/i').first();
+        await userBtn2.waitFor({ state: 'visible', timeout: 5000 });
         await userBtn2.click();
       }
     } catch (e) {
       console.log('Popup closed or user button not found');
+    }
+
+    // Wait for the popup to close completely
+    while (!userPopup.isClosed()) {
+       await userPage.waitForTimeout(500);
     }
 
     // Complete User Setup
