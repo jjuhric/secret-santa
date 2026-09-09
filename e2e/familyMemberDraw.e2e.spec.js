@@ -19,9 +19,17 @@ test.describe('Family Member Draw E2E Flow', () => {
     // Login as Admin
     const addAccountBtn = popup.getByRole('button', { name: /Add new account/i });
     if (await addAccountBtn.isVisible()) await addAccountBtn.click();
-    await popup.getByPlaceholder(/Enter email/i, { exact: false }).fill('admin@example.com');
-    await popup.getByPlaceholder(/Enter display name/i, { exact: false }).fill('Admin User');
-    await popup.getByRole('button', { name: /Sign in/i }).click();
+    
+    const emailInput = popup.locator('input[type="email"], input[name="email"], input[id*="email"]').first();
+    await emailInput.waitFor({ state: 'visible' });
+    await emailInput.fill('admin@example.com');
+    
+    const nameInput = popup.locator('input[type="text"], input[name="displayName"], input[id*="name"]').first();
+    if (await nameInput.isVisible()) {
+      await nameInput.fill('Admin User');
+    }
+    
+    await popup.getByRole('button', { name: /Sign in/i }).first().click();
 
     // Complete setup wizard for Admin
     await expect(adminPage.locator('h2', { hasText: 'Welcome to Christmas Shopping List!' })).toBeVisible({ timeout: 10000 });
@@ -66,9 +74,16 @@ test.describe('Family Member Draw E2E Flow', () => {
     if (await userPopup.getByRole('button', { name: /Add new account/i }).isVisible()) {
       await userPopup.getByRole('button', { name: /Add new account/i }).click();
     }
-    await userPopup.getByPlaceholder(/Enter email/i, { exact: false }).fill('user3@example.com');
-    await userPopup.getByPlaceholder(/Enter display name/i, { exact: false }).fill('User Three');
-    await userPopup.getByRole('button', { name: /Sign in/i }).click();
+    const emailInput2 = userPopup.locator('input[type="email"], input[name="email"], input[id*="email"]').first();
+    await emailInput2.waitFor({ state: 'visible' });
+    await emailInput2.fill('user3@example.com');
+    
+    const nameInput2 = userPopup.locator('input[type="text"], input[name="displayName"], input[id*="name"]').first();
+    if (await nameInput2.isVisible()) {
+      await nameInput2.fill('User Three');
+    }
+    
+    await userPopup.getByRole('button', { name: /Sign in/i }).first().click();
 
     // Complete User Setup
     await expect(userPage.locator('h2', { hasText: 'Welcome to Christmas Shopping List!' })).toBeVisible({ timeout: 10000 });
