@@ -27,6 +27,10 @@ export default function Dashboard() {
   const [newItemName, setNewItemName] = useState('');
   const [newItemLink, setNewItemLink] = useState('');
 
+  // Extra Person addition
+  const [isAddingExtraPerson, setIsAddingExtraPerson] = useState(false);
+  const [newExtraPersonName, setNewExtraPersonName] = useState('');
+
   const [loading, setLoading] = useState(true);
 
   // Set default active viewing profile
@@ -107,6 +111,25 @@ export default function Dashboard() {
     await updateDoc(doc(db, 'users', activeData.id), {
       giftPurchased: !activeData.giftPurchased
     });
+  }
+
+  // Add Extra Person to Buy For list
+  async function handleAddExtraPerson(e) {
+    e.preventDefault();
+    if (!newExtraPersonName.trim() || !activeData) return;
+    
+    const newPersonId = `extra_${Date.now()}`;
+    const newPerson = {
+      id: newPersonId,
+      name: newExtraPersonName.trim(),
+      isExtra: true
+    };
+    
+    const updatedExtraPeople = [...(activeData.extraPeople || []), newPerson];
+    await updateDoc(doc(db, 'users', activeData.id), { extraPeople: updatedExtraPeople });
+    
+    setNewExtraPersonName('');
+    setIsAddingExtraPerson(false);
   }
 
   // Add Item to active profile's wishlist (Rule 5)
@@ -256,22 +279,22 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Main Grid: Family Shopping Checklist (Rule 4) & Secret Santa Assignment & My Wishlist (Rule 5) */}
+            {/* Main Grid: Unified Buy For List & My Wishlist */}
       <div style={{ display: 'grid', gap: '2rem', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))' }}>
         
-        {/* RULE 4: Family Member Shopping List with Checkboxes */}
+        {/* Unified "Buy For" List */}
         <div className="glass-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <div>
               <h2 style={{ fontSize: '1.25rem' }}>
-                {activeData?.name}'s Family Shopping List
+                {activeData?.name}'s "Buy For" List
               </h2>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                {userProfile.familyId} Family Members
+                Track everyone you need to shop for
               </p>
             </div>
-            <span style={{ fontSize: '0.85rem', color: progressPercent === 100 ? '#10b981' : 'var(--primary)', fontWeight: 'bold' }}>
-              {completedCount} / {totalFamilyToShop} Done ({progressPercent}%)
+            <span style={{ fontSize: '0.85rem', color: progressPercent === 100 && totalToShop > 0 ? '#10b981' : 'var(--primary)', fontWeight: 'bold' }}>
+              {completedCount} / {totalToShop} Done ({progressPercent}%)
             </span>
           </div>
 
@@ -280,230 +303,182 @@ export default function Dashboard() {
             <div style={{ width: `${progressPercent}%`, height: '100%', background: 'linear-gradient(to right, var(--primary), #10b981)', transition: 'width 0.4s ease' }} />
           </div>
 
-          {familyMembers.length === 0 ? (
+          {buyForList.length === 0 ? (
             <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '1rem 0' }}>
-              No other family members in the {userProfile.familyId} group yet. Add them in the Admin Panel!
+              Your shopping list is empty. Add extra people below!
             </p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {familyMembers.map(member => {
-                const isBought = activeData?.purchasedMembers?.[member.id] || false;
-                return (
-                  <div 
-                    key={member.id} 
-                    style={{
-                      padding: '0.9rem',
-                      borderRadius: '12px',
-                      background: isBought ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.04)',
-                      border: `1px solid ${isBought ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.08)'}`,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '0.5rem',
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <label 
-                        style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem', flex: 1 }}
-                        onClick={() => toggleFamilyShopping(member.id)}
-                      >
-                        {isBought ? (
-                          <CheckSquare size={20} color="#10b981" />
-                        ) : (
-                          <Square size={20} color="var(--text-muted)" />
-                        )}
-                        <span style={{ textDecoration: isBought ? 'line-through' : 'none', color: isBought ? '#10b981' : 'white' }}>
-                          {member.name}
-                        </span>
-                        {member.isManaged && (
-                          <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 'normal' }}>(Child)</span>
-                        )}
-                      </label>
-
-                      {isBought && (
-                        <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 'bold' }}>Shopped</span>
+              {buyForList.map(member => (
+                <div 
+                  key={member.id} 
+                  style={{
+                    padding: '0.9rem',
+                    borderRadius: '12px',
+                    background: member.isBought ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.04)',
+                    border: `1px solid ${member.isBought ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.5rem',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <label 
+                      style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem', flex: 1 }}
+                      onClick={member.onToggle}
+                    >
+                      {member.isBought ? (
+                        <CheckSquare size={20} color="#10b981" />
+                      ) : (
+                        <Square size={20} color="var(--text-muted)" />
                       )}
-                    </div>
+                      <span style={{ textDecoration: member.isBought ? 'line-through' : 'none', color: member.isBought ? '#10b981' : 'white' }}>
+                        {member.name}
+                      </span>
+                      {member.type === 'secret_santa' && (
+                        <span style={{ fontSize: '0.75rem', color: '#ec4899', fontWeight: 'normal' }}>(Secret Santa)</span>
+                      )}
+                      {member.type === 'extra' && (
+                        <span style={{ fontSize: '0.75rem', color: '#8b5cf6', fontWeight: 'normal' }}>(Extra)</span>
+                      )}
+                      {member.isManaged && (
+                        <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 'normal' }}>(Child)</span>
+                      )}
+                    </label>
 
-                    {/* Member's Wishlist Preview */}
-                    {member.wishlist && member.wishlist.length > 0 && (
-                      <div style={{ marginTop: '0.25rem', paddingLeft: '1.8rem', fontSize: '0.85rem' }}>
-                        <span style={{ color: 'var(--text-muted)' }}>Wishes: </span>
-                        {member.wishlist.map((item, idx) => (
-                          <span key={item.id || idx} style={{ color: '#cbd5e1', marginRight: '0.5rem' }}>
-                            • {item.name}
-                            {item.link && (
-                              <a href={item.link} target="_blank" rel="noopener noreferrer" style={{ color: '#60a5fa', marginLeft: '3px' }}>
-                                <ExternalLink size={12} style={{ display: 'inline' }} />
-                              </a>
-                            )}
-                          </span>
-                        ))}
-                      </div>
+                    {member.isBought && (
+                      <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 'bold' }}>Shopped</span>
                     )}
                   </div>
-                );
-              })}
+
+                  {/* Member's Wishlist Preview */}
+                  {member.wishlist && member.wishlist.length > 0 && (
+                    <div style={{ marginTop: '0.25rem', paddingLeft: '1.8rem', fontSize: '0.85rem' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Wishes: </span>
+                      {member.wishlist.map((item, idx) => (
+                        <span key={item.id || idx} style={{ color: '#cbd5e1', marginRight: '0.5rem' }}>
+                          • {item.name}
+                          {item.link && (
+                            <a href={item.link} target="_blank" rel="noopener noreferrer" style={{ color: '#60a5fa', marginLeft: '3px' }}>
+                              <ExternalLink size={12} style={{ display: 'inline' }} />
+                            </a>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add Extra Person */}
+          <div style={{ marginTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1rem' }}>
+            {!isAddingExtraPerson ? (
+              <button 
+                className="btn btn-secondary" 
+                onClick={() => setIsAddingExtraPerson(true)}
+                style={{ width: '100%', display: 'flex', justifyContent: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', color: 'white' }}
+              >
+                <Plus size={16} /> Add Extra Person
+              </button>
+            ) : (
+              <form onSubmit={handleAddExtraPerson} style={{ display: 'flex', gap: '0.5rem' }}>
+                <input
+                  type="text"
+                  placeholder="Name (e.g. Grandma, Teacher)"
+                  value={newExtraPersonName}
+                  onChange={e => setNewExtraPersonName(e.target.value)}
+                  style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(0,0,0,0.3)', color: 'white' }}
+                  required
+                />
+                <button type="submit" className="btn btn-primary" style={{ padding: '0.5rem 1rem' }}>Add</button>
+                <button type="button" className="btn" onClick={() => setIsAddingExtraPerson(false)} style={{ background: 'rgba(255,255,255,0.1)', color: 'white' }}>Cancel</button>
+              </form>
+            )}
+          </div>
+        </div>
+
+        {/* RULE 5: My Wishlist with Add Item */}
+        <div className="glass-card" style={{ height: 'fit-content' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <div>
+              <h2 style={{ fontSize: '1.25rem' }}>
+                {activeData?.name}'s Wishlist
+              </h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                Gift ideas for your Christmas Shopping List buyer
+              </p>
+            </div>
+
+            {!isAddingItem && (
+              <button 
+                className="btn btn-primary" 
+                onClick={() => setIsAddingItem(true)}
+                style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}
+              >
+                <Plus size={16} /> Add Item
+              </button>
+            )}
+          </div>
+
+          {/* Inline Add Item Form */}
+          {isAddingItem && (
+            <form onSubmit={handleAddWishlistItem} style={{ background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '12px', marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <input
+                type="text"
+                placeholder="Item Name (e.g. Wireless Headphones)"
+                value={newItemName}
+                onChange={e => setNewItemName(e.target.value)}
+                style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.05)', color: 'white' }}
+                required
+              />
+              <input
+                type="url"
+                placeholder="Link to item (optional Amazon, Target, etc.)"
+                value={newItemLink}
+                onChange={e => setNewItemLink(e.target.value)}
+                style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.05)', color: 'white' }}
+              />
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button type="submit" className="btn btn-primary" style={{ flex: 1, padding: '0.6rem' }}>
+                  Save Item
+                </button>
+                <button type="button" className="btn" onClick={() => setIsAddingItem(false)} style={{ background: 'rgba(255,255,255,0.1)', color: 'white', padding: '0.6rem 1rem' }}>
+                  Cancel
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* Wishlist Items List */}
+          {(!activeData?.wishlist || activeData.wishlist.length === 0) ? (
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textAlign: 'center', padding: '1rem 0' }}>
+              No items on your wishlist yet. Click "Add Item" above to add your first gift idea!
+            </p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {activeData.wishlist.map(item => (
+                <div key={item.id} style={{ background: 'rgba(0,0,0,0.25)', padding: '0.75rem 1rem', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontWeight: 'bold', fontSize: '0.95rem' }}>{item.name}</div>
+                    {item.link && (
+                      <a href={item.link} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.8rem', color: '#60a5fa', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.2rem', marginTop: '0.2rem' }}>
+                        View Link <ExternalLink size={12} />
+                      </a>
+                    )}
+                  </div>
+                  <button 
+                    onClick={() => handleRemoveWishlistItem(item.id)}
+                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0.4rem' }}
+                    title="Remove item"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
             </div>
           )}
         </div>
-
-        {/* Column 2: Secret Santa Recipient & My Wishlist */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-          
-          {/* Secret Santa Draw Result Card */}
-          <div className="glass-card">
-            <h2 style={{ fontSize: '1.25rem', marginBottom: '0.5rem', color: 'var(--primary)' }}>
-              🎁 Christmas Shopping List Assignment
-            </h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.25rem' }}>
-              Assigned through random 3x shuffle (outside your family)
-            </p>
-
-            {recipientData ? (
-              <div>
-                <div style={{ background: 'rgba(236,72,153,0.15)', border: '1px solid var(--primary)', borderRadius: '14px', padding: '1.25rem', marginBottom: '1.25rem', textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>You are buying for:</div>
-                  <div style={{ fontSize: '1.6rem', fontWeight: '800', marginTop: '0.25rem' }}>
-                    {recipientData.name}
-                  </div>
-                  <div style={{ fontSize: '0.85rem', color: '#ec4899', marginTop: '0.25rem' }}>
-                    Family: {recipientData.familyId}
-                  </div>
-                </div>
-
-                <div 
-                  onClick={toggleSecretSantaPurchased}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.6rem',
-                    padding: '0.85rem',
-                    background: activeData?.giftPurchased ? 'rgba(16,185,129,0.15)' : 'rgba(0,0,0,0.25)',
-                    borderRadius: '10px',
-                    cursor: 'pointer',
-                    marginBottom: '1.25rem',
-                    border: `1px solid ${activeData?.giftPurchased ? '#10b981' : 'rgba(255,255,255,0.1)'}`
-                  }}
-                >
-                  <CheckCircle size={22} color={activeData?.giftPurchased ? '#10b981' : 'gray'} />
-                  <span style={{ fontWeight: 'bold', fontSize: '0.95rem', color: activeData?.giftPurchased ? '#10b981' : 'white' }}>
-                    {activeData?.giftPurchased ? 'Gift Purchased for ' + recipientData.name : 'Mark Gift as Purchased'}
-                  </span>
-                </div>
-
-                <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>Their Wishlist:</h3>
-                {(!recipientData.wishlist || recipientData.wishlist.length === 0) ? (
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>They haven't added any wishlist items yet.</p>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    {recipientData.wishlist.map(item => (
-                      <div key={item.id} style={{ background: 'rgba(255,255,255,0.05)', padding: '0.75rem', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontWeight: 'bold' }}>{item.name}</span>
-                        {item.link && (
-                          <a href={item.link} target="_blank" rel="noopener noreferrer" style={{ color: '#60a5fa', fontSize: '0.85rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                            Link <ExternalLink size={14} />
-                          </a>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div style={{ textAlign: 'center', padding: '1.5rem 0', color: 'var(--text-muted)' }}>
-                <p>The Christmas Shopping List draw hasn't been conducted yet.</p>
-                <p style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>Once the Master Admin runs the draw, your recipient will appear here!</p>
-              </div>
-            )}
-          </div>
-
-          {/* RULE 5: My Wishlist with Add Item */}
-          <div className="glass-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <div>
-                <h2 style={{ fontSize: '1.25rem' }}>
-                  {activeData?.name}'s Wishlist
-                </h2>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                  Gift ideas for your Christmas Shopping List buyer
-                </p>
-              </div>
-
-              {!isAddingItem && (
-                <button 
-                  className="btn btn-primary" 
-                  onClick={() => setIsAddingItem(true)}
-                  style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}
-                >
-                  <Plus size={16} /> Add Item
-                </button>
-              )}
-            </div>
-
-            {/* Inline Add Item Form */}
-            {isAddingItem && (
-              <form onSubmit={handleAddWishlistItem} style={{ background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '12px', marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <input
-                  type="text"
-                  placeholder="Item Name (e.g. Wireless Headphones)"
-                  value={newItemName}
-                  onChange={e => setNewItemName(e.target.value)}
-                  style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.05)', color: 'white' }}
-                  required
-                />
-                <input
-                  type="url"
-                  placeholder="Link to item (optional Amazon, Target, etc.)"
-                  value={newItemLink}
-                  onChange={e => setNewItemLink(e.target.value)}
-                  style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.05)', color: 'white' }}
-                />
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button type="submit" className="btn btn-primary" style={{ flex: 1, padding: '0.6rem' }}>
-                    Save Item
-                  </button>
-                  <button type="button" className="btn" onClick={() => setIsAddingItem(false)} style={{ background: 'rgba(255,255,255,0.1)', color: 'white', padding: '0.6rem 1rem' }}>
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            )}
-
-            {/* Wishlist Items List */}
-            {(!activeData?.wishlist || activeData.wishlist.length === 0) ? (
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textAlign: 'center', padding: '1rem 0' }}>
-                No items on your wishlist yet. Click "Add Item" above to add your first gift idea!
-              </p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {activeData.wishlist.map(item => (
-                  <div key={item.id} style={{ background: 'rgba(0,0,0,0.25)', padding: '0.75rem 1rem', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <div style={{ fontWeight: 'bold', fontSize: '0.95rem' }}>{item.name}</div>
-                      {item.link && (
-                        <a href={item.link} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.8rem', color: '#60a5fa', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.2rem', marginTop: '0.2rem' }}>
-                          View Link <ExternalLink size={12} />
-                        </a>
-                      )}
-                    </div>
-                    <button 
-                      onClick={() => handleRemoveWishlistItem(item.id)}
-                      style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0.4rem' }}
-                      title="Remove item"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-        </div>
-
-      </div>
-
-    </div>
-  );
-}
+\n    </div>\n  );\n}\n
