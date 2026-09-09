@@ -104,9 +104,14 @@ export default function Dashboard() {
         <div className="glass-card login-card">
           <h2>Account Not Found</h2>
           <p>Your email ({currentUser.email}) is not registered in the Secret Santa system. Please ask the Admin to add you.</p>
-          <button className="btn btn-primary btn-large" onClick={logout} style={{ marginTop: '1rem' }}>
-            <LogOut size={20} /> Sign Out
-          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1.5rem' }}>
+            <Link to="/admin" className="btn" style={{ background: 'rgba(255,255,255,0.1)', color: 'white', textDecoration: 'none' }}>
+              Go to Admin Panel
+            </Link>
+            <button className="btn btn-primary" onClick={logout}>
+              <LogOut size={20} /> Sign Out
+            </button>
+          </div>
         </div>
       </div>
     );
