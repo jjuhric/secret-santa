@@ -181,7 +181,7 @@ test.describe('Family Member Draw E2E Flow', () => {
 
     // Verify Assignment! Since User 3 is in FamilyThree, and Admin/User2 are in FamilyOne/FamilyTwo
     // User 3 must have drawn someone outside FamilyThree (Master Admin or User Two).
-    await expect(userPage.getByText(/You are buying for:/i)).toBeVisible({ timeout: 10000 });
+    await expect(userPage.getByText(/"Buy For" List/i)).toBeVisible({ timeout: 10000 });
     
     // We expect either Master Admin or User Two to be displayed as recipient
     await expect(userPage.getByText(/Master Admin|User Two/)).toBeVisible({ timeout: 5000 });
