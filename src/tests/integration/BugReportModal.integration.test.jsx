@@ -1,6 +1,6 @@
 import React from 'react';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import BugReportModal from '../../components/BugReportModal';
 import { AuthProvider } from '../../contexts/AuthContext';
 import { addDoc } from 'firebase/firestore';
@@ -54,7 +54,10 @@ describe('BugReportModal Integration', () => {
   it('appears when an app-error event is dispatched', async () => {
     vi.useRealTimers();
     render(<BugReportModal />);
-    window.dispatchEvent(new CustomEvent('app-error', { detail: 'Fake Error' }));
+    
+    act(() => {
+      window.dispatchEvent(new CustomEvent('app-error', { detail: 'Fake Error' }));
+    });
     
     await waitFor(() => {
       expect(screen.getByText(/Report Bug/i)).toBeInTheDocument();
@@ -64,13 +67,16 @@ describe('BugReportModal Integration', () => {
   it('auto-hides after 60 seconds of inactivity', async () => {
     vi.useFakeTimers();
     render(<BugReportModal />);
-    window.dispatchEvent(new CustomEvent('app-error', { detail: 'Fake Error' }));
     
-    // In fake timer environment, we can just check if it's there instantly (state update might be synchronous or need act)
+    act(() => {
+      window.dispatchEvent(new CustomEvent('app-error', { detail: 'Fake Error' }));
+    });
+    
     expect(screen.getByText(/Report Bug/i)).toBeInTheDocument();
 
-    // Advance timer by 61 seconds
-    vi.advanceTimersByTime(61000);
+    act(() => {
+      vi.advanceTimersByTime(61000);
+    });
 
     expect(screen.queryByText(/Report Bug/i)).not.toBeInTheDocument();
   });
@@ -78,7 +84,10 @@ describe('BugReportModal Integration', () => {
   it('opens modal, submits successfully, and hides immediately after OK', async () => {
     vi.useRealTimers();
     render(<BugReportModal />);
-    window.dispatchEvent(new CustomEvent('app-error', { detail: 'Fake Error' }));
+    
+    act(() => {
+      window.dispatchEvent(new CustomEvent('app-error', { detail: 'Fake Error' }));
+    });
     
     // Open modal
     fireEvent.click(screen.getByText(/Report Bug/i));
@@ -108,7 +117,7 @@ describe('BugReportModal Integration', () => {
     await waitFor(() => {
       expect(screen.queryByText(/Bug Report Submitted/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/Report an Issue/i)).not.toBeInTheDocument();
-      expect(screen.queryByText(/Report Bug/i)).not.toBeInTheDocument(); // Floating button should be gone
+      expect(screen.queryByText(/Report Bug/i)).not.toBeInTheDocument();
     });
   });
 });
