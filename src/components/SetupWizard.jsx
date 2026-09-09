@@ -221,7 +221,7 @@ export default function SetupWizard({ onComplete }) {
               style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
             />
           </div>
-          <h2 className="title" style={{ fontSize: '1.8rem' }}>Welcome to Secret Santa!</h2>
+          <h2 className="title" style={{ fontSize: '1.8rem' }}>Welcome to Christmas Shopping List!</h2>
           <p className="subtitle" style={{ marginBottom: '1rem' }}>
             {isMasterAdmin ? 'Master Admin First-Time Setup' : 'First-Time Account Setup Wizard'}
           </p>
@@ -244,8 +244,8 @@ export default function SetupWizard({ onComplete }) {
             </h3>
             
             {isMasterAdmin && (
-              <div style={{ background: 'rgba(236,72,153,0.15)', border: '1px solid var(--primary)', padding: '0.75rem 1rem', borderRadius: '12px', fontSize: '0.9rem' }}>
-                ⭐ <strong>You are the Master Admin!</strong> You are the first user to set up the system. You have full access to manage all families and conduct the Secret Santa draw.
+              <div style={{ background: 'rgba(220,38,38,0.15)', border: '1px solid var(--primary)', padding: '0.75rem 1rem', borderRadius: '12px', fontSize: '0.9rem' }}>
+                ⭐ <strong>You are the Master Admin!</strong> You are the first user to set up the system. You have full access to manage all families and conduct the Christmas Shopping List draw.
               </div>
             )}
 
@@ -272,7 +272,7 @@ export default function SetupWizard({ onComplete }) {
                 required
               />
               <small style={{ color: 'var(--text-muted)', display: 'block', marginTop: '0.25rem' }}>
-                Family members in this group will not pick each other during the Secret Santa draw.
+                Family members in this group will not pick each other during the Christmas Shopping List draw.
               </small>
             </div>
 
@@ -438,11 +438,11 @@ export default function SetupWizard({ onComplete }) {
             
             <h3 style={{ fontSize: '1.5rem' }}>You're All Set!</h3>
             <p style={{ color: 'var(--text-muted)' }}>
-              Your account has been configured. You can now view your family shopping checklist, update your wishlist anytime, and see your Secret Santa recipient once the draw is run!
+              Your account has been configured. You can now view your family shopping checklist, update your wishlist anytime, and see your Christmas Shopping List recipient once the draw is run!
             </p>
 
             <button className="btn btn-primary btn-large" onClick={finishSetup} disabled={saving}>
-              {saving ? 'Finalizing...' : 'Enter Secret Santa Dashboard'}
+              {saving ? 'Finalizing...' : 'Enter Christmas Shopping List Dashboard'}
             </button>
           </div>
         )}

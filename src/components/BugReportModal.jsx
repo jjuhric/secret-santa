@@ -213,7 +213,7 @@ export default function BugReportModal() {
       if (masterAdminEmail) {
         await sendBugReportEmail({
           masterEmail: masterAdminEmail,
-          reporterName: userProfile?.name || currentUser?.email || 'Secret Santa User',
+          reporterName: userProfile?.name || currentUser?.email || 'Christmas Shopping List User',
           reporterEmail: currentUser?.email || '',
           issueDescription: description.trim(),
           pageUrl: metaInfo.pageUrl,

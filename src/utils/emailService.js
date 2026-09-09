@@ -52,7 +52,7 @@ export async function sendInviteEmail({ toEmail, toName, familyName, invitedBy }
     invited_by: invitedBy || 'Your Family Admin',
     invite_link: inviteLink,
     app_url: inviteLink,
-    message: `You have been invited to join the ${familyName} Secret Santa Christmas gift exchange!`
+    message: `You have been invited to join the ${familyName} Christmas Shopping List!`
   };
 
   try {
@@ -101,7 +101,7 @@ export async function sendBugReportEmail({
     to_email: masterEmail,
     from_name: reporterName || 'Anonymous User',
     reply_to: reporterEmail || '',
-    subject: `[Bug Report] Secret Santa issue from ${reporterName || 'User'}`,
+    subject: `[Bug Report] Christmas Shopping List issue from ${reporterName || 'User'}`,
     message: `Issue Description:
 ${issueDescription}
 

@@ -293,7 +293,7 @@ export default function Admin() {
       for (const [buyerId, recipientId] of Object.entries(assignments)) {
         await setDoc(doc(db, 'users', buyerId), { recipientId }, { merge: true });
       }
-      alert('Secret Santa Draw completed successfully! All buyers have been assigned recipients from outside their family.');
+      alert('Christmas Shopping List Draw completed successfully! All buyers have been assigned recipients from outside their family.');
       fetchUsers();
     } catch (err) {
       console.error('Error saving draw: ', err);
@@ -346,7 +346,7 @@ export default function Admin() {
                 onClick={handleDraw} 
                 disabled={loading || users.length < 3}
               >
-                Run Secret Santa Draw
+                Run Christmas Shopping List Draw
               </button>
             </>
           )}

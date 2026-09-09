@@ -19,7 +19,7 @@ export default function Dashboard() {
   const [viewingId, setViewingId] = useState(null);
   const [activeData, setActiveData] = useState(null);
   
-  // Secret Santa assigned recipient for active profile
+  // Christmas Shopping List assigned recipient for active profile
   const [recipientData, setRecipientData] = useState(null);
   
   // Wishlist item addition
@@ -161,7 +161,7 @@ export default function Dashboard() {
           </div>
           <h2>Account Not Found</h2>
           <p className="subtitle" style={{ marginTop: '0.5rem' }}>
-            The email <strong>{currentUser?.email}</strong> has not been invited to a Secret Santa family yet.
+            The email <strong>{currentUser?.email}</strong> has not been invited to a Christmas Shopping List family yet.
           </p>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
             Please contact your Family Admin to send you an invitation email.
@@ -191,7 +191,7 @@ export default function Dashboard() {
               alt="Santa reading wishlist scroll" 
               style={{ width: '38px', height: '38px', borderRadius: '10px', objectFit: 'cover', border: '1.5px solid rgba(251, 191, 36, 0.6)', boxShadow: '0 2px 10px rgba(0,0,0,0.3)' }} 
             />
-            Secret Santa
+            Christmas Shopping List
           </h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.35rem' }}>
             <span style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>
@@ -354,7 +354,7 @@ export default function Dashboard() {
           {/* Secret Santa Draw Result Card */}
           <div className="glass-card">
             <h2 style={{ fontSize: '1.25rem', marginBottom: '0.5rem', color: 'var(--primary)' }}>
-              🎁 Secret Santa Assignment
+              🎁 Christmas Shopping List Assignment
             </h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.25rem' }}>
               Assigned through random 3x shuffle (outside your family)
@@ -412,7 +412,7 @@ export default function Dashboard() {
               </div>
             ) : (
               <div style={{ textAlign: 'center', padding: '1.5rem 0', color: 'var(--text-muted)' }}>
-                <p>The Secret Santa draw hasn't been conducted yet.</p>
+                <p>The Christmas Shopping List draw hasn't been conducted yet.</p>
                 <p style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>Once the Master Admin runs the draw, your recipient will appear here!</p>
               </div>
             )}
@@ -426,7 +426,7 @@ export default function Dashboard() {
                   {activeData?.name}'s Wishlist
                 </h2>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                  Gift ideas for your Secret Santa buyer
+                  Gift ideas for your Christmas Shopping List buyer
                 </p>
               </div>
 

@@ -42,7 +42,7 @@ export default function Login() {
           />
         </div>
 
-        <h1 className="title">Secret Santa</h1>
+        <h1 className="title">Christmas Shopping List</h1>
         <p className="subtitle">Sign in to view your recipient, check off family gifts, and update your wishlist.</p>
         
         {error && <div className="error-message">{error}</div>}
