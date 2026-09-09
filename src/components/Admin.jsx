@@ -251,6 +251,7 @@ export default function Admin() {
       for (const [buyerId, recipientId] of Object.entries(assignments)) {
         await setDoc(doc(db, 'users', buyerId), { recipientId }, { merge: true });
       }
+      setMessage('Christmas Shopping List Draw completed successfully! All buyers have been assigned recipients from outside their family.');
       alert('Christmas Shopping List Draw completed successfully! All buyers have been assigned recipients from outside their family.');
       fetchUsers();
     } catch (err) {

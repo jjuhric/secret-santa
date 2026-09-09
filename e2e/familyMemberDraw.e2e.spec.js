@@ -1,6 +1,15 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Family Member Draw E2E Flow', () => {
+  test.beforeEach(async ({ request }) => {
+    try {
+      await request.delete('http://localhost:8080/emulator/v1/projects/uhrick-christmas-list/databases/(default)/documents');
+      await request.delete('http://localhost:9099/emulator/v1/projects/uhrick-christmas-list/accounts');
+    } catch (e) {
+      console.warn('Could not clear emulator data:', e);
+    }
+  });
+
   test('Master Admin invites a user, performs the draw, and users see assignments', async ({ page, context }) => {
     // Note: In a complete isolated E2E suite, we'd use Playwright's API request context 
     // to seed the Firestore database with multiple users to perform a draw, 
@@ -64,45 +73,48 @@ test.describe('Family Member Draw E2E Flow', () => {
     // Complete setup wizard for Admin (Step 1)
     await expect(adminPage.locator('h2', { hasText: 'Welcome to Christmas Shopping List!' })).toBeVisible({ timeout: 10000 });
     await adminPage.getByPlaceholder('e.g. Jane Uhrick').fill('Master Admin');
-    await adminPage.getByPlaceholder('e.g. Uhrick').fill('Test Family');
+    await adminPage.getByPlaceholder('e.g. Uhrick').fill('FamilyOne');
     await adminPage.getByRole('button', { name: 'Continue to Wishlist' }).click();
 
     // Step 2: Wishlist
     await expect(adminPage.locator('h3', { hasText: 'Step 2: Add Gift Ideas to Your Wishlist' })).toBeVisible();
-    await adminPage.getByRole('button', { name: 'Continue to Family Setup' }).click();
+    await adminPage.getByRole('button', { name: 'Continue to Invite Members' }).click();
 
     // Step 3: Invite Family
     await expect(adminPage.locator('h3', { hasText: 'Step 3: Invite Family Members' })).toBeVisible();
-    await adminPage.getByRole('button', { name: 'Skip / Continue' }).click();
+    await adminPage.getByRole('button', { name: 'Ready to Finish' }).click();
 
     // Step 4: Finish
     await expect(adminPage.locator('h3', { hasText: "You're All Set!" })).toBeVisible();
     await adminPage.getByRole('button', { name: 'Enter Christmas Shopping List Dashboard' }).click();
 
     // Go to Admin Panel
-    await adminPage.getByRole('link', { name: 'Family Admin Panel' }).click();
+    await adminPage.getByRole('link', { name: /Admin Panel/i }).click();
 
-    // Invite User 2
-    await adminPage.getByPlaceholder('Full Name', { exact: true }).fill('User Two');
-    await adminPage.getByPlaceholder('Google Email Address').fill('user2@example.com');
-    await adminPage.getByRole('combobox').selectOption('Test Family');
+    // Invite User 2 (FamilyTwo)
+    await adminPage.getByPlaceholder('Full Name').fill('User Two');
+    await adminPage.getByPlaceholder('Google Email').fill('user2@example.com');
+    await adminPage.getByPlaceholder('Family Name (e.g. Uhrick)').fill('FamilyTwo');
     await adminPage.getByRole('button', { name: 'Add & Send Invite' }).click();
+    await expect(adminPage.getByText(/User created!/i)).toBeVisible();
 
-    // Invite User 3 (Different Family to allow a valid draw)
-    await adminPage.getByPlaceholder('Full Name', { exact: true }).fill('User Three');
-    await adminPage.getByPlaceholder('Google Email Address').fill('user3@example.com');
-    await adminPage.getByPlaceholder('New Family Name').fill('OtherFamily'); // Creates a new family
+    // Invite User 3 (FamilyThree - Different Family to allow a valid draw)
+    await adminPage.getByPlaceholder('Full Name').fill('User Three');
+    await adminPage.getByPlaceholder('Google Email').fill('user3@example.com');
+    await adminPage.getByPlaceholder('Family Name (e.g. Uhrick)').fill('FamilyThree');
     await adminPage.getByRole('button', { name: 'Add & Send Invite' }).click();
+    await expect(adminPage.getByText(/User created!/i)).toBeVisible();
 
     // --- Perform the Draw ---
-    // Wait for members to appear in list (we might have a slight delay for Firestore updates)
-    await adminPage.waitForTimeout(1000); 
-    
-    // In our app, we click "Run Draw"
-    await adminPage.getByRole('button', { name: /Run Christmas Shopping List Draw/i }).click();
+    const drawBtn = adminPage.getByRole('button', { name: /Run Christmas Shopping List Draw/i });
+    await expect(drawBtn).toBeEnabled({ timeout: 10000 });
+    adminPage.on('dialog', async dialog => {
+      await dialog.accept();
+    });
+    await drawBtn.click();
 
     // Verify Draw Success
-    await expect(adminPage.getByText(/Draw completed successfully/i)).toBeVisible();
+    await expect(adminPage.getByText(/Draw completed successfully/i)).toBeVisible({ timeout: 10000 });
 
     // --- BROWSER CONTEXT 2: User Three logs in to see assignment ---
     const userContext = await adminPage.context().browser().newContext();
@@ -160,16 +172,18 @@ test.describe('Family Member Draw E2E Flow', () => {
     // Complete User Setup
     await expect(userPage.locator('h2', { hasText: 'Welcome to Christmas Shopping List!' })).toBeVisible({ timeout: 10000 });
     await userPage.getByPlaceholder('e.g. Jane Uhrick').fill('User Three');
-    // They are in OtherFamily, they might not need to enter it if prefilled, but SetupWizard requires it
-    await userPage.getByPlaceholder('e.g. Uhrick').fill('OtherFamily');
+    await userPage.getByPlaceholder('e.g. Uhrick').fill('FamilyThree');
     await userPage.getByRole('button', { name: 'Continue to Wishlist' }).click();
 
-    // Verify Assignment! Since User 3 is in OtherFamily, and Admin/User2 are in AdminFamily
-    // User 3 must have drawn someone from AdminFamily.
-    await expect(userPage.getByText(/You are shopping for:/i)).toBeVisible();
+    // Step 2: Wishlist (Non-admin completes setup here)
+    await expect(userPage.locator('h3', { hasText: 'Step 2: Add Gift Ideas to Your Wishlist' })).toBeVisible();
+    await userPage.getByRole('button', { name: 'Complete Setup' }).click();
+
+    // Verify Assignment! Since User 3 is in FamilyThree, and Admin/User2 are in FamilyOne/FamilyTwo
+    // User 3 must have drawn someone outside FamilyThree (Master Admin or User Two).
+    await expect(userPage.getByText(/You are buying for:/i)).toBeVisible({ timeout: 10000 });
     
-    // We expect either Admin User or User Two
-    const assignmentText = await userPage.locator('.glass-card').nth(1).textContent();
-    expect(assignmentText).toMatch(/Admin User|User Two/);
+    // We expect either Master Admin or User Two to be displayed as recipient
+    await expect(userPage.getByText(/Master Admin|User Two/)).toBeVisible({ timeout: 5000 });
   });
 });
