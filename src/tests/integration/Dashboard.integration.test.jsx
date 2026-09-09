@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import Dashboard from '../../components/Dashboard';
 import { useAuth } from '../../contexts/AuthContext';
 import { MemoryRouter } from 'react-router-dom';
-import { onSnapshot, updateDoc, collection, query, where } from 'firebase/firestore';
+import { onSnapshot, updateDoc, setDoc, getDoc, collection, query, where } from 'firebase/firestore';
 
 vi.mock('../../firebase', () => ({
   auth: {},
@@ -13,9 +13,11 @@ vi.mock('../../firebase', () => ({
 }));
 
 vi.mock('firebase/firestore', () => ({
-  doc: vi.fn(),
+  doc: vi.fn().mockReturnValue({ isDoc: true }),
   onSnapshot: vi.fn(),
   updateDoc: vi.fn(),
+  setDoc: vi.fn(),
+  getDoc: vi.fn(),
   collection: vi.fn(),
   query: vi.fn().mockReturnValue({ isQuery: true }),
   where: vi.fn(),
@@ -102,6 +104,57 @@ describe('Dashboard Integration', () => {
       expect(screen.getByText(/"Buy For" List/i)).toBeInTheDocument();
       // Should show User 2 but NOT User 1 in the shopping list (checkboxes)
       expect(screen.getByText('User 2')).toBeInTheDocument();
+    });
+  });
+
+  it('adds extra person to the family in Firestore when submitted', async () => {
+    useAuth.mockReturnValue({
+      userProfile: { id: 'u1', name: 'User 1', familyId: 'FamA', setupComplete: true },
+      isUninvited: false,
+      loading: false
+    });
+
+    onSnapshot.mockImplementation((q, callback) => {
+      if (q && q.isQuery) {
+        callback({ docs: [] });
+      } else {
+        callback({
+          exists: () => true,
+          id: 'u1',
+          data: () => ({ name: 'User 1', familyId: 'FamA', wishlist: [], extraPeople: [] })
+        });
+      }
+      return vi.fn();
+    });
+
+    render(
+      <MemoryRouter>
+        <Dashboard />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Add Extra Person/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText(/Add Extra Person/i));
+
+    fireEvent.change(screen.getByPlaceholderText(/Name \(e\.g\. Grandma/i), { target: { value: 'Aunt Sally' } });
+    fireEvent.change(screen.getByPlaceholderText(/Email \(optional\)/i), { target: { value: 'sally@example.com' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /^Add$/i }));
+
+    await waitFor(() => {
+      expect(setDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          name: 'Aunt Sally',
+          email: 'sally@example.com',
+          familyId: 'FamA',
+          isExtra: true
+        })
+      );
+      expect(updateDoc).toHaveBeenCalled();
     });
   });
 });

@@ -619,6 +619,8 @@ export default function Admin() {
                       <span style={{ background: '#ec4899', color: 'white', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold' }}>Master</span>
                     ) : u.isAdmin ? (
                       <span style={{ background: '#8b5cf6', color: 'white', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold' }}>Admin</span>
+                    ) : u.isExtra ? (
+                      <span style={{ background: 'rgba(139, 92, 246, 0.25)', color: '#c084fc', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold', border: '1px solid rgba(139, 92, 246, 0.4)' }}>Extra</span>
                     ) : u.isManaged ? (
                       <span style={{ background: 'rgba(255,255,255,0.1)', color: '#cbd5e1', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.75rem' }}>Child</span>
                     ) : (
