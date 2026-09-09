@@ -197,10 +197,52 @@ export default function Dashboard() {
     );
   }
 
-  // Calculate shopping checklist stats
-  const completedCount = familyMembers.filter(m => activeData?.purchasedMembers?.[m.id]).length;
-  const totalFamilyToShop = familyMembers.length;
-  const progressPercent = totalFamilyToShop > 0 ? Math.round((completedCount / totalFamilyToShop) * 100) : 0;
+  // Combine all people into unified "Buy For" list
+  const buyForList = [];
+  
+  // 1. Secret Santa Recipient
+  if (recipientData) {
+    buyForList.push({
+      id: recipientData.id,
+      name: recipientData.name,
+      type: 'secret_santa',
+      isBought: activeData?.giftPurchased || false,
+      wishlist: recipientData.wishlist || [],
+      onToggle: toggleSecretSantaPurchased
+    });
+  }
+  
+  // 2. Family Members
+  familyMembers.forEach(member => {
+    buyForList.push({
+      id: member.id,
+      name: member.name,
+      type: 'family',
+      isManaged: member.isManaged,
+      isBought: activeData?.purchasedMembers?.[member.id] || false,
+      wishlist: member.wishlist || [],
+      onToggle: () => toggleFamilyShopping(member.id)
+    });
+  });
+  
+  // 3. Extra People
+  if (activeData?.extraPeople) {
+    activeData.extraPeople.forEach(person => {
+      buyForList.push({
+        id: person.id,
+        name: person.name,
+        type: 'extra',
+        isBought: activeData?.purchasedMembers?.[person.id] || false,
+        wishlist: [],
+        onToggle: () => toggleFamilyShopping(person.id)
+      });
+    });
+  }
+
+  // Calculate shopping checklist stats based on unified list
+  const completedCount = buyForList.filter(m => m.isBought).length;
+  const totalToShop = buyForList.length;
+  const progressPercent = totalToShop > 0 ? Math.round((completedCount / totalToShop) * 100) : 0;
 
   return (
     <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '1.5rem 1rem 3rem' }}>

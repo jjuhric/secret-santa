@@ -99,7 +99,7 @@ describe('Dashboard Integration', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/Family Members/i)).toBeInTheDocument();
+      expect(screen.getByText(/"Buy For" List/i)).toBeInTheDocument();
       // Should show User 2 but NOT User 1 in the shopping list (checkboxes)
       expect(screen.getByText('User 2')).toBeInTheDocument();
     });
