@@ -23,12 +23,18 @@ test.describe('Master Admin Setup E2E Flow', () => {
       await addAccountBtn.click();
     }
     
-    // Fill the email and display name (Auth emulator uses 'email' and 'displayName' placeholders/names)
-    await popup.getByPlaceholder(/Enter email/i, { exact: false }).fill('master@example.com');
-    await popup.getByPlaceholder(/Enter display name/i, { exact: false }).fill('Master Chief');
+    // Fill the email and display name using generic CSS selectors instead of placeholders
+    const emailInput = popup.locator('input[type="email"], input[name="email"], input[id*="email"]').first();
+    await emailInput.waitFor({ state: 'visible' });
+    await emailInput.fill('master@example.com');
+
+    const nameInput = popup.locator('input[type="text"], input[name="displayName"], input[id*="name"]').first();
+    if (await nameInput.isVisible()) {
+      await nameInput.fill('Master Chief');
+    }
     
     // Click "Sign in"
-    await popup.getByRole('button', { name: /Sign in/i }).click();
+    await popup.getByRole('button', { name: /Sign in/i }).first().click();
 
     // Wait for the popup to close and auth state to resolve in the main window
     await page.waitForURL('**/');
