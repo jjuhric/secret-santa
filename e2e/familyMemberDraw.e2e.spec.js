@@ -25,13 +25,12 @@ test.describe('Family Member Draw E2E Flow', () => {
       console.log('Add new account button not found, assuming form is visible');
     }
     
-    const emailInput = popup.locator('input[type="email"], input[name="email"], input[id*="email"]').first();
-    await emailInput.waitFor({ state: 'visible' });
-    await emailInput.fill('admin@example.com');
+    const inputs = popup.locator('input');
+    await inputs.nth(0).waitFor({ state: 'visible' });
+    await inputs.nth(0).fill('admin@example.com');
     
-    const nameInput = popup.locator('input[type="text"], input[name="displayName"], input[id*="name"]').first();
-    if (await nameInput.isVisible()) {
-      await nameInput.fill('Admin User');
+    if (await inputs.nth(1).isVisible()) {
+      await inputs.nth(1).fill('Admin User');
     }
     
     await popup.getByRole('button', { name: /Sign in/i }).first().click();
@@ -84,13 +83,12 @@ test.describe('Family Member Draw E2E Flow', () => {
       console.log('Add new account button not found, assuming form is visible');
     }
 
-    const emailInput2 = userPopup.locator('input[type="email"], input[name="email"], input[id*="email"]').first();
-    await emailInput2.waitFor({ state: 'visible' });
-    await emailInput2.fill('user3@example.com');
+    const inputs2 = userPopup.locator('input');
+    await inputs2.nth(0).waitFor({ state: 'visible' });
+    await inputs2.nth(0).fill('user3@example.com');
     
-    const nameInput2 = userPopup.locator('input[type="text"], input[name="displayName"], input[id*="name"]').first();
-    if (await nameInput2.isVisible()) {
-      await nameInput2.fill('User Three');
+    if (await inputs2.nth(1).isVisible()) {
+      await inputs2.nth(1).fill('User Three');
     }
     
     await userPopup.getByRole('button', { name: /Sign in/i }).first().click();

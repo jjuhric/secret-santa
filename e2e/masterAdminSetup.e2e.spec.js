@@ -25,14 +25,13 @@ test.describe('Master Admin Setup E2E Flow', () => {
       console.log('Add new account button not found or timed out, assuming form is visible');
     }
     
-    // Fill the email and display name using generic CSS selectors instead of placeholders
-    const emailInput = popup.locator('input[type="email"], input[name="email"], input[id*="email"]').first();
-    await emailInput.waitFor({ state: 'visible' });
-    await emailInput.fill('master@example.com');
+    // Fill the email and display name using generic input locators
+    const inputs = popup.locator('input');
+    await inputs.nth(0).waitFor({ state: 'visible' });
+    await inputs.nth(0).fill('master@example.com');
 
-    const nameInput = popup.locator('input[type="text"], input[name="displayName"], input[id*="name"]').first();
-    if (await nameInput.isVisible()) {
-      await nameInput.fill('Master Chief');
+    if (await inputs.nth(1).isVisible()) {
+      await inputs.nth(1).fill('Master Chief');
     }
     
     // Click "Sign in"
