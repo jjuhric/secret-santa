@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
 import { collection, getDocs, setDoc, doc, deleteDoc, getDoc } from 'firebase/firestore';
 import { Link } from 'react-router-dom';
-import { ShieldCheck, UserPlus, Trash2, Mail, Send, Settings, ArrowLeft, RefreshCw } from 'lucide-react';
+import { ShieldCheck, UserPlus, Trash2, Mail, Send, Settings, ArrowLeft, RefreshCw, Bug, CheckCircle } from 'lucide-react';
 import { sendInviteEmail, getEmailConfig, saveEmailConfig } from '../utils/emailService';
 
 export default function Admin() {
@@ -28,10 +28,17 @@ export default function Admin() {
   // Filter for Master Admin
   const [familyFilter, setFamilyFilter] = useState('ALL');
 
+  // Bug reports for Master Admin
+  const [bugReports, setBugReports] = useState([]);
+  const [showBugs, setShowBugs] = useState(false);
+
   useEffect(() => {
     fetchUsers();
     loadEmailSettings();
-  }, [userProfile]);
+    if (isMasterAdmin) {
+      fetchBugReports();
+    }
+  }, [userProfile, isMasterAdmin]);
 
   async function loadEmailSettings() {
     const config = await getEmailConfig();
@@ -67,6 +74,24 @@ export default function Admin() {
       setUsers(usersList);
     } catch (err) {
       console.error("Error fetching users:", err);
+    }
+  }
+
+  async function fetchBugReports() {
+    try {
+      const snap = await getDocs(collection(db, 'bug_reports'));
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      setBugReports(list);
+    } catch (err) {
+      console.warn("Could not fetch bug reports:", err);
+    }
+  }
+
+  async function handleDeleteBug(bugId) {
+    if (window.confirm("Delete this bug report?")) {
+      await deleteDoc(doc(db, 'bug_reports', bugId));
+      fetchBugReports();
     }
   }
 
@@ -297,6 +322,14 @@ export default function Admin() {
             <>
               <button 
                 className="btn" 
+                onClick={() => setShowBugs(!showBugs)} 
+                style={{ background: bugReports.length > 0 ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.1)', color: bugReports.length > 0 ? '#f87171' : 'white', border: bugReports.length > 0 ? '1px solid #ef4444' : 'none' }}
+              >
+                <Bug size={18} /> Bug Reports ({bugReports.length})
+              </button>
+
+              <button 
+                className="btn" 
                 onClick={() => setShowEmailSettings(!showEmailSettings)} 
                 style={{ background: 'rgba(255,255,255,0.1)', color: 'white' }}
               >
@@ -374,6 +407,85 @@ export default function Admin() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Bug Reports Drawer (Master Admin Only) */}
+      {isMasterAdmin && showBugs && (
+        <div className="glass-card" style={{ marginBottom: '2rem', border: '1px solid rgba(239, 68, 68, 0.4)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#f87171' }}>
+              <Bug size={20} color="#ef4444" /> Received Bug Reports ({bugReports.length})
+            </h3>
+            <button 
+              className="btn" 
+              onClick={() => setShowBugs(false)} 
+              style={{ background: 'rgba(255,255,255,0.1)', color: 'white', padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
+            >
+              Close
+            </button>
+          </div>
+
+          {bugReports.length === 0 ? (
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No bug reports logged yet. Everything is smooth!</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {bugReports.map((b) => (
+                <div 
+                  key={b.id} 
+                  style={{
+                    background: 'rgba(0, 0, 0, 0.35)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    borderRadius: '12px',
+                    padding: '1rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.6rem'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <div>
+                      <div style={{ fontWeight: 'bold', fontSize: '1.05rem', color: '#f8fafc' }}>
+                        {b.issue}
+                      </div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '0.2rem' }}>
+                        Reported by: <strong>{b.reporterName}</strong> ({b.reporterEmail}) • {b.localTime || b.timeReported}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteBug(b.id)}
+                      className="btn"
+                      style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.4)', padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}
+                    >
+                      <Trash2 size={14} /> Remove Report
+                    </button>
+                  </div>
+
+                  <div style={{ background: 'rgba(255, 255, 255, 0.04)', padding: '0.6rem 0.8rem', borderRadius: '8px', fontSize: '0.8rem', color: '#cbd5e1' }}>
+                    <div><strong>Page / URL:</strong> {b.pageUrl || b.route}</div>
+                    <div><strong>Browser / OS:</strong> {b.metadata?.browser || 'N/A'}</div>
+                    <div><strong>Screen:</strong> {b.metadata?.viewport || 'N/A'}</div>
+                    {b.metadata?.lastError && b.metadata.lastError !== 'None detected' && (
+                      <div style={{ color: '#f87171', marginTop: '0.2rem' }}><strong>Error Trace:</strong> {b.metadata.lastError}</div>
+                    )}
+                  </div>
+
+                  {b.screenshot && (
+                    <div style={{ marginTop: '0.5rem' }}>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Attached Screenshot:</div>
+                      <a href={b.screenshot} target="_blank" rel="noopener noreferrer">
+                        <img 
+                          src={b.screenshot} 
+                          alt="Bug report screenshot" 
+                          style={{ maxHeight: '140px', maxWidth: '100%', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.2)', objectFit: 'contain' }} 
+                        />
+                      </a>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

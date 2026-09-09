@@ -77,3 +77,61 @@ export async function sendInviteEmail({ toEmail, toName, familyName, invitedBy }
     };
   }
 }
+
+export async function sendBugReportEmail({
+  masterEmail,
+  reporterName,
+  reporterEmail,
+  issueDescription,
+  pageUrl,
+  timestamp,
+  metadata
+}) {
+  const config = await getEmailConfig();
+
+  if (!config || !config.serviceId || !config.templateId || !config.publicKey) {
+    return {
+      success: false,
+      notConfigured: true,
+      message: 'EmailJS is not yet configured.'
+    };
+  }
+
+  const templateParams = {
+    to_email: masterEmail,
+    from_name: reporterName || 'Anonymous User',
+    reply_to: reporterEmail || '',
+    subject: `[Bug Report] Secret Santa issue from ${reporterName || 'User'}`,
+    message: `Issue Description:
+${issueDescription}
+
+--- Trace Details ---
+Time: ${timestamp}
+Page / URL: ${pageUrl}
+User: ${reporterName || 'N/A'} (${reporterEmail || 'N/A'})
+Browser / OS: ${metadata?.browser || navigator.userAgent}
+Screen Resolution: ${metadata?.viewport || `${window.innerWidth}x${window.innerHeight}`}
+Runtime Error: ${metadata?.lastError || 'None detected'}
+`
+  };
+
+  try {
+    const response = await emailjs.send(
+      config.serviceId,
+      config.templateId,
+      templateParams,
+      config.publicKey
+    );
+    return {
+      success: true,
+      status: response.status
+    };
+  } catch (error) {
+    console.error("EmailJS Bug Report Error:", error);
+    return {
+      success: false,
+      error,
+      message: error?.text || 'EmailJS failed to deliver bug report email.'
+    };
+  }
+}

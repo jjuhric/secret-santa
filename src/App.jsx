@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import Admin from './components/Admin';
+import BugReportModal from './components/BugReportModal';
 
 // Custom wrapper for private routes
 function PrivateRoute({ children }) {
@@ -22,6 +23,8 @@ export default function App() {
   return (
     <AuthProvider>
       <Router>
+        {/* Global Floating Bug Report Tab & Modal */}
+        <BugReportModal />
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route 
