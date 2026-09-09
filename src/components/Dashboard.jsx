@@ -5,6 +5,7 @@ import { doc, onSnapshot, updateDoc, collection, query, where, getDocs } from 'f
 import { Link } from 'react-router-dom';
 import { Gift, CheckCircle, LogOut, Users, Plus, ShieldCheck, ExternalLink, Trash2, CheckSquare, Square } from 'lucide-react';
 import SetupWizard from './SetupWizard';
+import santaScrollIcon from '../assets/santa-scroll.jpg';
 
 export default function Dashboard() {
   const { currentUser, userProfile, isAdmin, isMasterAdmin, isUninvited, logout } = useAuth();
@@ -184,18 +185,23 @@ export default function Dashboard() {
       {/* Header */}
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.8rem' }}>
-            <Gift color="var(--primary)" /> Secret Santa
+          <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', fontSize: '1.8rem' }}>
+            <img 
+              src={santaScrollIcon} 
+              alt="Santa reading wishlist scroll" 
+              style={{ width: '38px', height: '38px', borderRadius: '10px', objectFit: 'cover', border: '1.5px solid rgba(251, 191, 36, 0.6)', boxShadow: '0 2px 10px rgba(0,0,0,0.3)' }} 
+            />
+            Secret Santa
           </h1>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.35rem' }}>
             <span style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>
               Welcome back, <strong>{userProfile.name}</strong>
             </span>
-            <span style={{ background: 'rgba(236,72,153,0.2)', color: 'var(--primary)', padding: '0.15rem 0.5rem', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 'bold' }}>
+            <span style={{ background: 'rgba(220,38,38,0.2)', border: '1px solid rgba(220,38,38,0.4)', color: '#f87171', padding: '0.15rem 0.5rem', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 'bold' }}>
               {userProfile.familyId} Family
             </span>
             {isMasterAdmin && (
-              <span style={{ background: '#ec4899', color: 'white', padding: '0.15rem 0.5rem', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 'bold' }}>
+              <span style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: '#1a0f02', padding: '0.15rem 0.5rem', borderRadius: '8px', fontSize: '0.75rem', fontWeight: '800' }}>
                 Master Admin
               </span>
             )}
@@ -204,7 +210,7 @@ export default function Dashboard() {
 
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
           {(isAdmin || isMasterAdmin) && (
-            <Link to="/admin" className="btn" style={{ background: 'rgba(236,72,153,0.15)', border: '1px solid var(--primary)', color: 'white', textDecoration: 'none' }}>
+            <Link to="/admin" className="btn" style={{ background: 'rgba(220,38,38,0.18)', border: '1px solid var(--primary)', color: 'white', textDecoration: 'none' }}>
               <ShieldCheck size={18} color="var(--primary)" /> Admin Panel
             </Link>
           )}

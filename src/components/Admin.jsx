@@ -5,6 +5,7 @@ import { collection, getDocs, setDoc, doc, deleteDoc, getDoc } from 'firebase/fi
 import { Link } from 'react-router-dom';
 import { ShieldCheck, UserPlus, Trash2, Mail, Send, Settings, ArrowLeft, RefreshCw, Bug, CheckCircle } from 'lucide-react';
 import { sendInviteEmail, getEmailConfig, saveEmailConfig } from '../utils/emailService';
+import santaScrollIcon from '../assets/santa-scroll.jpg';
 
 export default function Admin() {
   const { userProfile, isMasterAdmin, isAdmin } = useAuth();
@@ -311,8 +312,12 @@ export default function Admin() {
           <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: '#94a3b8', textDecoration: 'none', marginBottom: '0.5rem' }}>
             <ArrowLeft size={16} /> Back to Dashboard
           </Link>
-          <h1 style={{ fontSize: '1.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <ShieldCheck color="var(--primary)" /> 
+          <h1 style={{ fontSize: '1.8rem', display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+            <img 
+              src={santaScrollIcon} 
+              alt="Santa reading wishlist scroll" 
+              style={{ width: '38px', height: '38px', borderRadius: '10px', objectFit: 'cover', border: '1.5px solid rgba(251, 191, 36, 0.6)', boxShadow: '0 2px 10px rgba(0,0,0,0.3)' }} 
+            />
             {isMasterAdmin ? 'Master Admin Panel' : `Admin Panel (${userProfile?.familyId} Family)`}
           </h1>
         </div>

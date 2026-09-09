@@ -4,6 +4,7 @@ import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import Admin from './components/Admin';
 import BugReportModal from './components/BugReportModal';
+import Snowfall from './components/Snowfall';
 
 // Custom wrapper for private routes
 function PrivateRoute({ children }) {
@@ -23,8 +24,12 @@ export default function App() {
   return (
     <AuthProvider>
       <Router>
+        {/* Subtle, gentle background snowfall */}
+        <Snowfall />
+
         {/* Global Floating Bug Report Tab & Modal */}
         <BugReportModal />
+
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route 

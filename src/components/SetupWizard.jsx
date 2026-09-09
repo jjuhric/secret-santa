@@ -4,6 +4,7 @@ import { db } from '../firebase';
 import { doc, updateDoc, collection, setDoc, getDocs, getDoc, query, where } from 'firebase/firestore';
 import { Gift, CheckCircle, Sparkles, UserPlus, ArrowRight, ShieldCheck } from 'lucide-react';
 import { sendInviteEmail } from '../utils/emailService';
+import santaScrollIcon from '../assets/santa-scroll.jpg';
 
 export default function SetupWizard({ onComplete }) {
   const { userProfile, isMasterAdmin } = useAuth();
@@ -202,8 +203,23 @@ export default function SetupWizard({ onComplete }) {
         
         {/* Header / Stepper indicator */}
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <div className="icon-wrapper" style={{ width: '64px', height: '64px', borderRadius: '16px' }}>
-            <Sparkles size={32} color="#fff" />
+          <div 
+            className="icon-wrapper" 
+            style={{ 
+              width: '84px', 
+              height: '84px', 
+              borderRadius: '20px', 
+              overflow: 'hidden', 
+              padding: 0, 
+              border: '2px solid rgba(251, 191, 36, 0.6)', 
+              boxShadow: '0 8px 25px rgba(220, 38, 38, 0.45)' 
+            }}
+          >
+            <img 
+              src={santaScrollIcon} 
+              alt="Santa reading wishlist scroll" 
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+            />
           </div>
           <h2 className="title" style={{ fontSize: '1.8rem' }}>Welcome to Secret Santa!</h2>
           <p className="subtitle" style={{ marginBottom: '1rem' }}>

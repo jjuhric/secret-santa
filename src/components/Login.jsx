@@ -1,7 +1,7 @@
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
-import { Gift } from 'lucide-react';
+import santaScrollIcon from '../assets/santa-scroll.jpg';
 
 export default function Login() {
   const { loginWithGoogle } = useAuth();
@@ -26,11 +26,24 @@ export default function Login() {
   return (
     <div className="login-container">
       <div className="glass-card login-card">
-        <div className="icon-wrapper">
-          <Gift size={48} className="brand-icon" />
+        {/* Santa Reading Wishlist Scroll Icon */}
+        <div 
+          className="icon-wrapper"
+          style={{
+            border: '2px solid rgba(251, 191, 36, 0.6)',
+            boxShadow: '0 8px 30px rgba(220, 38, 38, 0.45)',
+            background: 'rgba(0, 0, 0, 0.4)'
+          }}
+        >
+          <img 
+            src={santaScrollIcon} 
+            alt="Santa reading Christmas wishlist scroll" 
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+          />
         </div>
+
         <h1 className="title">Secret Santa</h1>
-        <p className="subtitle">Sign in to view your recipient and update your wishlist.</p>
+        <p className="subtitle">Sign in to view your recipient, check off family gifts, and update your wishlist.</p>
         
         {error && <div className="error-message">{error}</div>}
         
@@ -38,12 +51,13 @@ export default function Login() {
           className="btn btn-primary btn-large" 
           onClick={handleLogin} 
           disabled={loading}
+          style={{ fontSize: '1.05rem', letterSpacing: '0.3px' }}
         >
-          {loading ? 'Signing in...' : 'Sign in with Google'}
+          {loading ? 'Signing in...' : '🎅 Sign in with Google'}
         </button>
       </div>
       
-      {/* Decorative background elements */}
+      {/* Decorative ambient holiday glows */}
       <div className="blob blob-1"></div>
       <div className="blob blob-2"></div>
     </div>
