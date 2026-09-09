@@ -7,6 +7,7 @@ export default function Admin() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [family, setFamily] = useState('');
+  const [isManaged, setIsManaged] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -21,21 +22,32 @@ export default function Admin() {
 
   async function handleAddUser(e) {
     e.preventDefault();
-    if (!name || !email || !family) return;
+    if (!name || !family) return;
+    if (!isManaged && !email) {
+      alert("Email is required for adult accounts.");
+      return;
+    }
     
     setLoading(true);
     try {
-      // Use email as the document ID for easy lookup on login
-      await setDoc(doc(db, 'users', email.toLowerCase()), {
-        name,
-        email: email.toLowerCase(),
-        familyId: family.toLowerCase(),
+      const sanitizedFamily = family.toLowerCase().trim();
+      const docId = isManaged 
+        ? `kid-${sanitizedFamily}-${name.toLowerCase().replace(/[^a-z0-9]/g, '')}-${Date.now()}`
+        : email.toLowerCase().trim();
+
+      await setDoc(doc(db, 'users', docId), {
+        name: name.trim(),
+        email: isManaged ? null : email.toLowerCase().trim(),
+        familyId: sanitizedFamily,
+        isManaged: isManaged,
         wishlist: [],
         recipientId: null,
         giftPurchased: false
       });
+      
       setName('');
       setEmail('');
+      setIsManaged(false);
       fetchUsers();
     } catch (err) {
       console.error("Error adding user: ", err);
@@ -44,9 +56,9 @@ export default function Admin() {
     }
   }
 
-  async function handleDelete(emailId) {
+  async function handleDelete(docId) {
     if(window.confirm("Are you sure you want to remove this user?")) {
-      await deleteDoc(doc(db, 'users', emailId));
+      await deleteDoc(doc(db, 'users', docId));
       fetchUsers();
     }
   }
@@ -76,13 +88,10 @@ export default function Admin() {
     while (!validDraw && attempts < 1000) {
       attempts++;
       
-      // Prompt requirement: run through randomizer minimum 3 times
       let shuffledRecipients = [...users];
       for(let i=0; i<3; i++) {
         shuffledRecipients = shuffle(shuffledRecipients);
       }
-      
-      // Shuffle one more time if needed, but we already did 3 minimum
       shuffledRecipients = shuffle(shuffledRecipients);
       
       validDraw = true;
@@ -92,14 +101,7 @@ export default function Admin() {
         const buyer = users[i];
         const recipient = shuffledRecipients[i];
 
-        // Constraint: Cannot pick yourself
-        if (buyer.id === recipient.id) {
-          validDraw = false;
-          break;
-        }
-
-        // Constraint: Cannot pick someone in the same family
-        if (buyer.familyId === recipient.familyId) {
+        if (buyer.id === recipient.id || buyer.familyId === recipient.familyId) {
           validDraw = false;
           break;
         }
@@ -109,18 +111,17 @@ export default function Admin() {
     }
 
     if (!validDraw) {
-      alert('Could not find a valid combination. Please check family distributions (e.g., one family cannot make up more than half the group).');
+      alert('Could not find a valid combination. Check family distributions.');
       setLoading(false);
       return;
     }
 
-    // Save assignments to Firestore
     try {
       for (const [buyerId, recipientId] of Object.entries(assignments)) {
         await setDoc(doc(db, 'users', buyerId), { recipientId }, { merge: true });
       }
       alert('Draw completed successfully!');
-      fetchUsers(); // Refresh to see assignments
+      fetchUsers();
     } catch (err) {
       console.error('Error saving draw: ', err);
       alert('Failed to save the draw.');
@@ -138,32 +139,56 @@ export default function Admin() {
         </button>
       </div>
       
-      <div className="glass-card" style={{ marginBottom: '2rem' }}>
-        <form onSubmit={handleAddUser} style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-          <input 
-            type="text" 
-            placeholder="Name" 
-            value={name} 
-            onChange={e => setName(e.target.value)} 
-            style={{ padding: '0.5rem', borderRadius: '8px' }}
-          />
-          <input 
-            type="email" 
-            placeholder="Google Email" 
-            value={email} 
-            onChange={e => setEmail(e.target.value)} 
-            style={{ padding: '0.5rem', borderRadius: '8px' }}
-          />
-          <input 
-            type="text" 
-            placeholder="Family Group (e.g. Smith)" 
-            value={family} 
-            onChange={e => setFamily(e.target.value)} 
-            style={{ padding: '0.5rem', borderRadius: '8px' }}
-          />
-          <button type="submit" className="btn btn-primary" disabled={loading}>
-            Add User
-          </button>
+      <div className="glass-card" style={{ marginBottom: '2rem', marginTop: '1rem' }}>
+        <form onSubmit={handleAddUser} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <input 
+              type="checkbox" 
+              id="isManaged"
+              checked={isManaged} 
+              onChange={e => setIsManaged(e.target.checked)} 
+              style={{ width: '18px', height: '18px' }}
+            />
+            <label htmlFor="isManaged" style={{ cursor: 'pointer', fontWeight: 'bold' }}>
+              This is a managed child account (no email needed)
+            </label>
+          </div>
+
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+            <input 
+              type="text" 
+              placeholder="Name" 
+              value={name} 
+              onChange={e => setName(e.target.value)} 
+              style={{ padding: '0.5rem', borderRadius: '8px', flex: 1 }}
+              required
+            />
+            {!isManaged && (
+              <input 
+                type="email" 
+                placeholder="Google Email" 
+                value={email} 
+                onChange={e => setEmail(e.target.value)} 
+                style={{ padding: '0.5rem', borderRadius: '8px', flex: 1 }}
+                required
+              />
+            )}
+            <input 
+              type="text" 
+              placeholder="Family Group (e.g. Smith)" 
+              value={family} 
+              onChange={e => setFamily(e.target.value)} 
+              style={{ padding: '0.5rem', borderRadius: '8px', flex: 1 }}
+              required
+            />
+          </div>
+          
+          <div>
+            <button type="submit" className="btn btn-primary" disabled={loading}>
+              Add User
+            </button>
+          </div>
         </form>
       </div>
 
@@ -172,7 +197,10 @@ export default function Admin() {
         <ul style={{ listStyle: 'none', padding: 0, marginTop: '1rem' }}>
           {users.map(u => (
             <li key={u.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-              <span>{u.name} ({u.email}) - Family: {u.familyId}</span>
+              <span>
+                <strong>{u.name}</strong> {u.isManaged ? <span style={{color: '#94a3b8'}}>(Child)</span> : `(${u.email})`} 
+                <span style={{ marginLeft: '10px', color: '#ec4899' }}>Family: {u.familyId}</span>
+              </span>
               <button onClick={() => handleDelete(u.id)} style={{ background: 'red', color: 'white', border: 'none', borderRadius: '4px', padding: '0.2rem 0.5rem', cursor: 'pointer' }}>Delete</button>
             </li>
           ))}
