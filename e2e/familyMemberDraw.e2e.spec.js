@@ -31,9 +31,10 @@ test.describe('Family Member Draw E2E Flow', () => {
     
     if (await inputs.nth(1).isVisible()) {
       await inputs.nth(1).fill('Admin User');
+      await inputs.nth(1).press('Enter');
+    } else {
+      await inputs.nth(0).press('Enter');
     }
-    const submitBtn = popup.locator('button', { hasText: /Sign in|Save/i }).first();
-    await submitBtn.click();
     
     try {
       if (!popup.isClosed()) {
@@ -99,9 +100,10 @@ test.describe('Family Member Draw E2E Flow', () => {
     
     if (await inputs2.nth(1).isVisible()) {
       await inputs2.nth(1).fill('User Three');
+      await inputs2.nth(1).press('Enter');
+    } else {
+      await inputs2.nth(0).press('Enter');
     }
-    const submitBtn2 = userPopup.locator('button', { hasText: /Sign in|Save/i }).first();
-    await submitBtn2.click();
     
     try {
       if (!userPopup.isClosed()) {

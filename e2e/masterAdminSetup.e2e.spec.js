@@ -32,11 +32,10 @@ test.describe('Master Admin Setup E2E Flow', () => {
 
     if (await inputs.nth(1).isVisible()) {
       await inputs.nth(1).fill('Master Chief');
+      await inputs.nth(1).press('Enter');
+    } else {
+      await inputs.nth(0).press('Enter');
     }
-    
-    // Click "Sign in" or "Save"
-    const submitBtn = popup.locator('button', { hasText: /Sign in|Save/i }).first();
-    await submitBtn.click();
     
     // If it was "Save" and the popup didn't close, there might be a user list now. Click the user.
     try {
