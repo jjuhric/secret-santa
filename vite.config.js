@@ -5,4 +5,10 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [react()],
   base: './', // Use relative paths for GitHub Pages
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: ['./src/tests/setup.js'],
+    exclude: ['node_modules', 'e2e/**/*']
+  },
 })
