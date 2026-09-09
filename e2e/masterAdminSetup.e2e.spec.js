@@ -16,11 +16,13 @@ test.describe('Master Admin Setup E2E Flow', () => {
     // Wait for the emulator UI to load
     await popup.waitForLoadState('networkidle');
 
-    // In the standard Firebase Auth Emulator UI:
-    // Click "Add new account" if present, or just fill the form directly.
-    const addAccountBtn = popup.getByRole('button', { name: /Add new account/i });
-    if (await addAccountBtn.isVisible()) {
+    // Wait for either "Add new account" or just proceed to the form
+    const addAccountBtn = popup.locator('text=/Add new account/i').first();
+    try {
+      await addAccountBtn.waitFor({ state: 'visible', timeout: 5000 });
       await addAccountBtn.click();
+    } catch (e) {
+      console.log('Add new account button not found or timed out, assuming form is visible');
     }
     
     // Fill the email and display name using generic CSS selectors instead of placeholders

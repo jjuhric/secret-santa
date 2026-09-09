@@ -17,8 +17,13 @@ test.describe('Family Member Draw E2E Flow', () => {
     const popup = await pagePromise;
     
     // Login as Admin
-    const addAccountBtn = popup.getByRole('button', { name: /Add new account/i });
-    if (await addAccountBtn.isVisible()) await addAccountBtn.click();
+    const addAccountBtn = popup.locator('text=/Add new account/i').first();
+    try {
+      await addAccountBtn.waitFor({ state: 'visible', timeout: 5000 });
+      await addAccountBtn.click();
+    } catch (e) {
+      console.log('Add new account button not found, assuming form is visible');
+    }
     
     const emailInput = popup.locator('input[type="email"], input[name="email"], input[id*="email"]').first();
     await emailInput.waitFor({ state: 'visible' });
@@ -71,9 +76,14 @@ test.describe('Family Member Draw E2E Flow', () => {
     await userPage.getByRole('button', { name: /Sign In With Google/i }).click();
     const userPopup = await userPagePromise;
     
-    if (await userPopup.getByRole('button', { name: /Add new account/i }).isVisible()) {
-      await userPopup.getByRole('button', { name: /Add new account/i }).click();
+    const addAccountBtn2 = userPopup.locator('text=/Add new account/i').first();
+    try {
+      await addAccountBtn2.waitFor({ state: 'visible', timeout: 5000 });
+      await addAccountBtn2.click();
+    } catch (e) {
+      console.log('Add new account button not found, assuming form is visible');
     }
+
     const emailInput2 = userPopup.locator('input[type="email"], input[name="email"], input[id*="email"]').first();
     await emailInput2.waitFor({ state: 'visible' });
     await emailInput2.fill('user3@example.com');
