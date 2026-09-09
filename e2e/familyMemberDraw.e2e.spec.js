@@ -32,8 +32,18 @@ test.describe('Family Member Draw E2E Flow', () => {
     if (await inputs.nth(1).isVisible()) {
       await inputs.nth(1).fill('Admin User');
     }
+    const submitBtn = popup.locator('button', { hasText: /Sign in|Save/i }).first();
+    await submitBtn.click();
     
-    await popup.getByRole('button', { name: /Sign in/i }).first().click();
+    try {
+      if (!popup.isClosed()) {
+        const userBtn = popup.locator('text=admin@example.com').first();
+        await userBtn.waitFor({ state: 'visible', timeout: 3000 });
+        await userBtn.click();
+      }
+    } catch (e) {
+      console.log('Popup closed or user button not found');
+    }
 
     // Complete setup wizard for Admin
     await expect(adminPage.locator('h2', { hasText: 'Welcome to Christmas Shopping List!' })).toBeVisible({ timeout: 10000 });
@@ -90,8 +100,18 @@ test.describe('Family Member Draw E2E Flow', () => {
     if (await inputs2.nth(1).isVisible()) {
       await inputs2.nth(1).fill('User Three');
     }
+    const submitBtn2 = userPopup.locator('button', { hasText: /Sign in|Save/i }).first();
+    await submitBtn2.click();
     
-    await userPopup.getByRole('button', { name: /Sign in/i }).first().click();
+    try {
+      if (!userPopup.isClosed()) {
+        const userBtn2 = userPopup.locator('text=user3@example.com').first();
+        await userBtn2.waitFor({ state: 'visible', timeout: 3000 });
+        await userBtn2.click();
+      }
+    } catch (e) {
+      console.log('Popup closed or user button not found');
+    }
 
     // Complete User Setup
     await expect(userPage.locator('h2', { hasText: 'Welcome to Christmas Shopping List!' })).toBeVisible({ timeout: 10000 });

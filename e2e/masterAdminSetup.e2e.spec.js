@@ -34,8 +34,20 @@ test.describe('Master Admin Setup E2E Flow', () => {
       await inputs.nth(1).fill('Master Chief');
     }
     
-    // Click "Sign in"
-    await popup.getByRole('button', { name: /Sign in/i }).first().click();
+    // Click "Sign in" or "Save"
+    const submitBtn = popup.locator('button', { hasText: /Sign in|Save/i }).first();
+    await submitBtn.click();
+    
+    // If it was "Save" and the popup didn't close, there might be a user list now. Click the user.
+    try {
+      if (!popup.isClosed()) {
+        const userBtn = popup.locator('text=master@example.com').first();
+        await userBtn.waitFor({ state: 'visible', timeout: 3000 });
+        await userBtn.click();
+      }
+    } catch (e) {
+      console.log('Popup closed or user button not found');
+    }
 
     // Wait for the popup to close and auth state to resolve in the main window
     await page.waitForURL('**/');
