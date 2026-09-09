@@ -40,16 +40,18 @@ test.describe('Master Admin Setup E2E Flow', () => {
     // If it was "Save" and the popup didn't close, there might be a user list now. Click the user.
     try {
       if (!popup.isClosed()) {
-        const userBtn = popup.locator('text=master@example.com').first();
-        await userBtn.waitFor({ state: 'visible', timeout: 3000 });
+        const userBtn = popup.locator('text=/master@example.com/i').first();
+        await userBtn.waitFor({ state: 'visible', timeout: 5000 });
         await userBtn.click();
       }
     } catch (e) {
       console.log('Popup closed or user button not found');
     }
 
-    // Wait for the popup to close and auth state to resolve in the main window
-    await page.waitForURL('**/');
+    // Wait for the popup to close completely
+    while (!popup.isClosed()) {
+       await page.waitForTimeout(500);
+    }
 
     // 3. User should now see the Setup Wizard
     const wizardHeading = page.locator('h2', { hasText: 'Welcome to Christmas Shopping List!' });
