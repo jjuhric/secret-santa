@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
 import { doc, onSnapshot, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { Link } from 'react-router-dom';
-import { Gift, CheckCircle, LogOut, Users, Plus, ShieldCheck, ExternalLink, Trash2, CheckSquare, Square } from 'lucide-react';
+import { Gift, CheckCircle, LogOut, Users, Plus, ShieldCheck, ExternalLink, Trash2, CheckSquare, Square, X } from 'lucide-react';
 import SetupWizard from './SetupWizard';
 import santaScrollIcon from '../assets/santa-scroll.jpg';
 
@@ -30,6 +30,10 @@ export default function Dashboard() {
   // Extra Person addition
   const [isAddingExtraPerson, setIsAddingExtraPerson] = useState(false);
   const [newExtraPersonName, setNewExtraPersonName] = useState('');
+  const [newExtraPersonEmail, setNewExtraPersonEmail] = useState('');
+
+  // Wishlist modal
+  const [wishlistModalMember, setWishlistModalMember] = useState(null);
 
   const [loading, setLoading] = useState(true);
 
@@ -122,6 +126,7 @@ export default function Dashboard() {
     const newPerson = {
       id: newPersonId,
       name: newExtraPersonName.trim(),
+      email: newExtraPersonEmail.trim(),
       isExtra: true
     };
     
@@ -129,6 +134,7 @@ export default function Dashboard() {
     await updateDoc(doc(db, 'users', activeData.id), { extraPeople: updatedExtraPeople });
     
     setNewExtraPersonName('');
+    setNewExtraPersonEmail('');
     setIsAddingExtraPerson(false);
   }
 
@@ -366,50 +372,43 @@ export default function Dashboard() {
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <label 
-                      style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem', flex: 1 }}
-                      onClick={member.onToggle}
-                    >
-                      {member.isBought ? (
-                        <CheckSquare size={20} color="#10b981" />
-                      ) : (
-                        <Square size={20} color="var(--text-muted)" />
-                      )}
-                      <span style={{ textDecoration: member.isBought ? 'line-through' : 'none', color: member.isBought ? '#10b981' : 'white' }}>
-                        {member.name}
-                      </span>
-                      {member.type === 'secret_santa' && (
-                        <span style={{ fontSize: '0.75rem', color: '#ec4899', fontWeight: 'normal' }}>(Secret Santa)</span>
-                      )}
-                      {member.type === 'extra' && (
-                        <span style={{ fontSize: '0.75rem', color: '#8b5cf6', fontWeight: 'normal' }}>(Extra)</span>
-                      )}
-                      {member.isManaged && (
-                        <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 'normal' }}>(Child)</span>
-                      )}
-                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flex: 1 }}>
+                      {/* Checkbox ONLY for toggling */}
+                      <div 
+                        onClick={(e) => { e.stopPropagation(); member.onToggle(); }} 
+                        style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                      >
+                        {member.isBought ? (
+                          <CheckSquare size={20} color="#10b981" />
+                        ) : (
+                          <Square size={20} color="var(--text-muted)" />
+                        )}
+                      </div>
+
+                      {/* Click anywhere else opens the wishlist modal */}
+                      <div 
+                        onClick={() => setWishlistModalMember(member)}
+                        style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}
+                      >
+                        <span style={{ textDecoration: member.isBought ? 'line-through' : 'none', color: member.isBought ? '#10b981' : 'white', fontWeight: 'bold', fontSize: '1rem' }}>
+                          {member.name}
+                        </span>
+                        {member.type === 'secret_santa' && (
+                          <span style={{ fontSize: '0.75rem', color: '#ec4899', fontWeight: 'normal' }}>(Secret Santa)</span>
+                        )}
+                        {member.type === 'extra' && (
+                          <span style={{ fontSize: '0.75rem', color: '#8b5cf6', fontWeight: 'normal' }}>(Extra)</span>
+                        )}
+                        {member.isManaged && (
+                          <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 'normal' }}>(Child)</span>
+                        )}
+                      </div>
+                    </div>
 
                     {member.isBought && (
                       <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 'bold' }}>Shopped</span>
                     )}
                   </div>
-
-                  {/* Member's Wishlist Preview */}
-                  {member.wishlist && member.wishlist.length > 0 && (
-                    <div style={{ marginTop: '0.25rem', paddingLeft: '1.8rem', fontSize: '0.85rem' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>Wishes: </span>
-                      {member.wishlist.map((item, idx) => (
-                        <span key={item.id || idx} style={{ color: '#cbd5e1', marginRight: '0.5rem' }}>
-                          • {item.name}
-                          {item.link && (
-                            <a href={item.link} target="_blank" rel="noopener noreferrer" style={{ color: '#60a5fa', marginLeft: '3px' }}>
-                              <ExternalLink size={12} style={{ display: 'inline' }} />
-                            </a>
-                          )}
-                        </span>
-                      ))}
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
@@ -426,17 +425,28 @@ export default function Dashboard() {
                 <Plus size={16} /> Add Extra Person
               </button>
             ) : (
-              <form onSubmit={handleAddExtraPerson} style={{ display: 'flex', gap: '0.5rem' }}>
-                <input
-                  type="text"
-                  placeholder="Name (e.g. Grandma, Teacher)"
-                  value={newExtraPersonName}
-                  onChange={e => setNewExtraPersonName(e.target.value)}
-                  style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(0,0,0,0.3)', color: 'white' }}
-                  required
-                />
-                <button type="submit" className="btn btn-primary" style={{ padding: '0.5rem 1rem' }}>Add</button>
-                <button type="button" className="btn" onClick={() => setIsAddingExtraPerson(false)} style={{ background: 'rgba(255,255,255,0.1)', color: 'white' }}>Cancel</button>
+              <form onSubmit={handleAddExtraPerson} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <input
+                    type="text"
+                    placeholder="Name (e.g. Grandma, Teacher)"
+                    value={newExtraPersonName}
+                    onChange={e => setNewExtraPersonName(e.target.value)}
+                    style={{ flex: 1, minWidth: '150px', padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(0,0,0,0.3)', color: 'white' }}
+                    required
+                  />
+                  <input
+                    type="email"
+                    placeholder="Email (optional)"
+                    value={newExtraPersonEmail}
+                    onChange={e => setNewExtraPersonEmail(e.target.value)}
+                    style={{ flex: 1, minWidth: '150px', padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(0,0,0,0.3)', color: 'white' }}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                  <button type="submit" className="btn btn-primary" style={{ padding: '0.5rem 1rem' }}>Add</button>
+                  <button type="button" className="btn" onClick={() => setIsAddingExtraPerson(false)} style={{ background: 'rgba(255,255,255,0.1)', color: 'white' }}>Cancel</button>
+                </div>
               </form>
             )}
           </div>
@@ -524,6 +534,49 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      {/* Wishlist Modal */}
+      {wishlistModalMember && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
+          background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
+          display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '1rem'
+        }} onClick={() => setWishlistModalMember(null)}>
+          <div className="glass-card" style={{ maxWidth: '400px', width: '100%', padding: '2rem' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+              <h2 style={{ fontSize: '1.5rem', color: 'white', margin: 0 }}>{wishlistModalMember.name}'s Wishlist</h2>
+              <button onClick={() => setWishlistModalMember(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0.2rem' }}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            {wishlistModalMember.wishlist && wishlistModalMember.wishlist.length > 0 ? (
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {wishlistModalMember.wishlist.map((item, idx) => (
+                  <li key={item.id || idx} style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    <div style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: item.link ? '0.5rem' : '0' }}>{item.name}</div>
+                    {item.link && (
+                      <a href={item.link} target="_blank" rel="noopener noreferrer" style={{ color: '#60a5fa', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                        <ExternalLink size={14} /> View Item
+                      </a>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--text-muted)' }}>
+                <Gift size={48} style={{ opacity: 0.2, margin: '0 auto 1rem' }} />
+                <p>{wishlistModalMember.name} hasn't added any items to their wishlist yet.</p>
+              </div>
+            )}
+            
+            <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end' }}>
+              <button className="btn btn-primary" onClick={() => setWishlistModalMember(null)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
