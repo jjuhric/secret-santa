@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import Admin from '../../components/Admin';
-import { AuthProvider, useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { MemoryRouter } from 'react-router-dom';
 import { getDocs, setDoc, deleteDoc, getDoc } from 'firebase/firestore';
 import { sendInviteEmail } from '../../utils/emailService';
@@ -118,5 +118,94 @@ describe('Admin Integration', () => {
     });
 
     alertMock.mockRestore();
+  });
+
+  it('allows Family Admin to delete non-admin family members but not themselves', async () => {
+    useAuth.mockReturnValue({
+      userProfile: { id: 'admin1', name: 'Admin User', familyId: 'Smith', isAdmin: true },
+      isMasterAdmin: false,
+      isAdmin: true
+    });
+
+    getDocs.mockResolvedValue({
+      docs: [
+        { id: 'admin1', data: () => ({ name: 'Admin User', familyId: 'Smith', isAdmin: true }) },
+        { id: 'member1', data: () => ({ name: 'John Smith', familyId: 'Smith', isAdmin: false }) }
+      ]
+    });
+
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    render(
+      <MemoryRouter>
+        <Admin />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('John Smith')).toBeInTheDocument();
+    });
+
+    // Delete button should NOT exist for admin1
+    expect(screen.queryByTestId('delete-user-admin1')).not.toBeInTheDocument();
+
+    // Delete button SHOULD exist for member1
+    const deleteMemberBtn = screen.getByTestId('delete-user-member1');
+    expect(deleteMemberBtn).toBeInTheDocument();
+
+    fireEvent.click(deleteMemberBtn);
+
+    expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining('John Smith'));
+    expect(deleteDoc).toHaveBeenCalled();
+
+    confirmSpy.mockRestore();
+  });
+
+  it('allows Master Admin to delete any member or admin, but not their own account', async () => {
+    useAuth.mockReturnValue({
+      userProfile: { id: 'master1', name: 'Master User', familyId: 'Main', role: 'master', isMaster: true },
+      isMasterAdmin: true,
+      isAdmin: true
+    });
+
+    getDocs.mockResolvedValue({
+      docs: [
+        { id: 'master1', data: () => ({ name: 'Master User', familyId: 'Main', role: 'master', isMaster: true }) },
+        { id: 'adminOther', data: () => ({ name: 'Other Admin', familyId: 'Jones', isAdmin: true }) },
+        { id: 'memberOther', data: () => ({ name: 'Other Member', familyId: 'Jones', isAdmin: false }) }
+      ]
+    });
+
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    render(
+      <MemoryRouter>
+        <Admin />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Other Admin')).toBeInTheDocument();
+      expect(screen.getByText('Other Member')).toBeInTheDocument();
+    });
+
+    // Master Admin cannot delete self
+    expect(screen.queryByTestId('delete-user-master1')).not.toBeInTheDocument();
+
+    // Master Admin CAN delete other family admin
+    const deleteAdminBtn = screen.getByTestId('delete-user-adminOther');
+    expect(deleteAdminBtn).toBeInTheDocument();
+    fireEvent.click(deleteAdminBtn);
+    expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining('Other Admin'));
+
+    // Master Admin CAN delete other regular member
+    const deleteMemberBtn = screen.getByTestId('delete-user-memberOther');
+    expect(deleteMemberBtn).toBeInTheDocument();
+    fireEvent.click(deleteMemberBtn);
+    expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining('Other Member'));
+
+    expect(deleteDoc).toHaveBeenCalledTimes(2);
+
+    confirmSpy.mockRestore();
   });
 });
