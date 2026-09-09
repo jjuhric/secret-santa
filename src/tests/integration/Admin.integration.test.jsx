@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import Admin from '../../components/Admin';
 import { useAuth } from '../../contexts/AuthContext';
 import { MemoryRouter } from 'react-router-dom';
-import { getDocs, setDoc, deleteDoc, getDoc } from 'firebase/firestore';
+import { getDocs, setDoc, deleteDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { sendInviteEmail } from '../../utils/emailService';
 
 // Mock Firebase
@@ -16,11 +16,14 @@ vi.mock('../../firebase', () => ({
 
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn(),
-  doc: vi.fn(),
+  doc: vi.fn((db, col, id) => ({ id })),
   getDocs: vi.fn(),
   setDoc: vi.fn(),
   deleteDoc: vi.fn(),
-  getDoc: vi.fn()
+  updateDoc: vi.fn(),
+  getDoc: vi.fn(),
+  query: vi.fn(),
+  where: vi.fn()
 }));
 
 vi.mock('../../utils/emailService', () => ({
@@ -207,5 +210,58 @@ describe('Admin Integration', () => {
     expect(deleteDoc).toHaveBeenCalledTimes(2);
 
     confirmSpy.mockRestore();
+  });
+
+  it('allows Family Admin to update an Extra member name and email', async () => {
+    useAuth.mockReturnValue({
+      userProfile: { id: 'admin1', name: 'Admin User', familyId: 'Smith', isAdmin: true },
+      isMasterAdmin: false,
+      isAdmin: true
+    });
+
+    getDocs.mockResolvedValue({
+      docs: [
+        { id: 'admin1', data: () => ({ name: 'Admin User', familyId: 'Smith', isAdmin: true }) },
+        { id: 'extra1', data: () => ({ name: 'Test', familyId: 'Smith', isAdmin: false, isExtra: true, email: null }) }
+      ]
+    });
+
+    render(
+      <MemoryRouter>
+        <Admin />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Test')).toBeInTheDocument();
+      expect(screen.getByText('Extra')).toBeInTheDocument();
+    });
+
+    const editBtn = screen.getByTestId('edit-user-extra1');
+    expect(editBtn).toBeInTheDocument();
+
+    fireEvent.click(editBtn);
+
+    expect(screen.getByText(/Edit Member/i)).toBeInTheDocument();
+    const nameInput = screen.getByTestId('edit-user-name-input');
+    const emailInput = screen.getByTestId('edit-user-email-input');
+
+    expect(nameInput.value).toBe('Test');
+    expect(emailInput.value).toBe('');
+
+    fireEvent.change(nameInput, { target: { value: 'Test Updated' } });
+    fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
+
+    fireEvent.click(screen.getByTestId('save-edit-user-btn'));
+
+    await waitFor(() => {
+      expect(updateDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          name: 'Test Updated',
+          email: 'test@example.com'
+        })
+      );
+    });
   });
 });

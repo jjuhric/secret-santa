@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
-import { collection, getDocs, setDoc, doc, deleteDoc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, setDoc, doc, deleteDoc, getDoc, updateDoc, query, where } from 'firebase/firestore';
 import { Link } from 'react-router-dom';
-import { ShieldCheck, UserPlus, Trash2, Mail, Send, Settings, ArrowLeft, RefreshCw, Bug, CheckCircle } from 'lucide-react';
+import { ShieldCheck, UserPlus, Trash2, Mail, Send, Settings, ArrowLeft, RefreshCw, Bug, CheckCircle, Edit2, X } from 'lucide-react';
 import { sendInviteEmail, getEmailConfig, saveEmailConfig } from '../utils/emailService';
 import { performDraw } from '../utils/drawUtils';
 import santaScrollIcon from '../assets/santa-scroll.jpg';
@@ -19,6 +19,11 @@ export default function Admin() {
   const [isManaged, setIsManaged] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+
+  // Edit user modal
+  const [editingUser, setEditingUser] = useState(null);
+  const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
 
   // EmailJS settings modal / drawer
   const [showEmailSettings, setShowEmailSettings] = useState(false);
@@ -239,6 +244,92 @@ export default function Admin() {
     return sameFamily && !targetUser.isAdmin && !targetUser.isMaster;
   }
 
+  function canEditUser(targetUser) {
+    if (!targetUser) return false;
+    if (isMasterAdmin) return true;
+    const sameFamily = (targetUser.familyId || '').toLowerCase() === (userProfile?.familyId || '').toLowerCase();
+    // Family Admin can edit non-admin members, extra members, or themselves in their family
+    return sameFamily && (!targetUser.isAdmin || targetUser.id === userProfile?.id);
+  }
+
+  function handleStartEdit(u) {
+    setEditingUser(u);
+    setEditName(u.name || '');
+    setEditEmail(u.email || '');
+  }
+
+  async function handleSaveEdit(e) {
+    e.preventDefault();
+    if (!editName.trim()) {
+      alert("Name is required.");
+      return;
+    }
+
+    const cleanEmail = editEmail.trim().toLowerCase() || null;
+    
+    // Check if email changed to an email that is already taken by another user
+    if (cleanEmail && cleanEmail !== editingUser.email) {
+      const existingUser = users.find(u => u.email?.toLowerCase() === cleanEmail && u.id !== editingUser.id);
+      if (existingUser) {
+        alert(`An account with email ${cleanEmail} already exists!`);
+        return;
+      }
+    }
+
+    setLoading(true);
+    try {
+      const userRef = doc(db, 'users', editingUser.id);
+      const updates = {
+        name: editName.trim(),
+        email: cleanEmail
+      };
+      
+      await updateDoc(userRef, updates);
+
+      // If email is newly set or changed, optionally send invite email
+      if (cleanEmail && cleanEmail !== editingUser.email) {
+        try {
+          await sendInviteEmail({
+            toEmail: cleanEmail,
+            toName: editName.trim(),
+            familyName: editingUser.familyId,
+            invitedBy: userProfile.name || userProfile.email
+          });
+        } catch (mailErr) {
+          console.warn("Could not send invite on update:", mailErr);
+        }
+      }
+
+      // Also update any matching extraPeople arrays on family users
+      const qFamily = query(collection(db, 'users'), where('familyId', '==', editingUser.familyId));
+      const fSnap = await getDocs(qFamily);
+      for (const fDoc of fSnap.docs) {
+        const fData = fDoc.data();
+        if (fData.extraPeople && Array.isArray(fData.extraPeople)) {
+          let changed = false;
+          const updatedEP = fData.extraPeople.map(ep => {
+            if (ep.id === editingUser.id || (ep.name?.toLowerCase() === editingUser.name?.toLowerCase())) {
+              changed = true;
+              return { ...ep, name: editName.trim(), email: cleanEmail };
+            }
+            return ep;
+          });
+          if (changed) {
+            await updateDoc(doc(db, 'users', fDoc.id), { extraPeople: updatedEP });
+          }
+        }
+      }
+
+      setEditingUser(null);
+      fetchUsers();
+    } catch (err) {
+      console.error("Error updating user:", err);
+      alert("Error updating user: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function handleDelete(docId, userName) {
     const targetUser = users.find(u => u.id === docId);
     if (targetUser && !canDeleteUser(targetUser)) {
@@ -252,8 +343,37 @@ export default function Admin() {
       : "";
 
     if (window.confirm(`Are you sure you want to remove "${userName}"?${drawWarning}`)) {
-      await deleteDoc(doc(db, 'users', docId));
-      fetchUsers();
+      setLoading(true);
+      try {
+        await deleteDoc(doc(db, 'users', docId));
+
+        // Clean up any extraPeople references in the family
+        const targetFamily = targetUser?.familyId || userProfile?.familyId;
+        if (targetFamily) {
+          const qFamily = query(collection(db, 'users'), where('familyId', '==', targetFamily));
+          const fSnap = await getDocs(qFamily);
+          for (const fDoc of fSnap.docs) {
+            const fData = fDoc.data();
+            if (fData.extraPeople && Array.isArray(fData.extraPeople)) {
+              const filtered = fData.extraPeople.filter(ep => 
+                ep.id !== docId && 
+                (!ep.email || ep.email !== targetUser?.email) &&
+                (ep.name?.toLowerCase() !== userName?.toLowerCase())
+              );
+              if (filtered.length !== fData.extraPeople.length) {
+                await updateDoc(doc(db, 'users', fDoc.id), { extraPeople: filtered });
+              }
+            }
+          }
+        }
+
+        fetchUsers();
+      } catch (err) {
+        console.error("Error deleting user:", err);
+        alert("Error removing user: " + err.message);
+      } finally {
+        setLoading(false);
+      }
     }
   }
 
@@ -641,6 +761,17 @@ export default function Admin() {
                           <Send size={15} />
                         </button>
                       )}
+                      {/* Edit member button */}
+                      {canEditUser(u) && (
+                        <button
+                          onClick={() => handleStartEdit(u)}
+                          title="Edit Member"
+                          data-testid={`edit-user-${u.id}`}
+                          style={{ background: 'rgba(59,130,246,0.2)', border: 'none', color: '#60a5fa', padding: '0.4rem', borderRadius: '6px', cursor: 'pointer' }}
+                        >
+                          <Edit2 size={15} />
+                        </button>
+                      )}
                       {/* Can delete if Master Admin (except self) or if Family Admin and target is non-admin family member */}
                       {canDeleteUser(u) && (
                         <button 
@@ -661,6 +792,92 @@ export default function Admin() {
         </div>
 
       </div>
+
+      {/* Edit User Modal */}
+      {editingUser && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          background: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '1rem'
+        }}>
+          <div className="glass-card" style={{ maxWidth: '450px', width: '100%', border: '1px solid rgba(251,191,36,0.3)', boxShadow: '0 20px 50px rgba(0,0,0,0.6)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <h2 style={{ fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Edit2 size={18} color="#fbbf24" /> Edit Member
+              </h2>
+              <button 
+                onClick={() => setEditingUser(null)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit}>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
+                  Full Name
+                </label>
+                <input 
+                  type="text"
+                  value={editName}
+                  onChange={e => setEditName(e.target.value)}
+                  required
+                  data-testid="edit-user-name-input"
+                  style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.3)', color: 'white' }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
+                  Email Address
+                </label>
+                <input 
+                  type="email"
+                  value={editEmail}
+                  onChange={e => setEditEmail(e.target.value)}
+                  placeholder="name@example.com (optional for extra/child)"
+                  data-testid="edit-user-email-input"
+                  style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.3)', color: 'white' }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '1.25rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                Family: <strong style={{ color: '#ec4899' }}>{editingUser.familyId}</strong>
+                {editingUser.isExtra && <span style={{ marginLeft: '0.5rem', background: 'rgba(139,92,246,0.25)', color: '#c084fc', padding: '0.15rem 0.4rem', borderRadius: '6px', fontSize: '0.75rem' }}>Extra Member</span>}
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                <button 
+                  type="button" 
+                  onClick={() => setEditingUser(null)}
+                  className="btn"
+                  style={{ background: 'rgba(255,255,255,0.1)', color: 'white' }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={loading}
+                  className="btn btn-primary"
+                  data-testid="save-edit-user-btn"
+                >
+                  {loading ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );

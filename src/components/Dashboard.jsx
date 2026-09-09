@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
-import { doc, onSnapshot, updateDoc, setDoc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, setDoc, deleteDoc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { Link } from 'react-router-dom';
 import { Gift, CheckCircle, LogOut, Users, Plus, ShieldCheck, ExternalLink, Trash2, CheckSquare, Square, X } from 'lucide-react';
 import SetupWizard from './SetupWizard';
@@ -207,6 +207,24 @@ export default function Dashboard() {
     setNewExtraPersonName('');
     setNewExtraPersonEmail('');
     setIsAddingExtraPerson(false);
+  }
+
+  // Delete Extra Person from Buy For list and Firestore
+  async function handleDeleteExtraPerson(personId, personName) {
+    if (window.confirm(`Remove "${personName}" from your shopping list?`)) {
+      try {
+        const updated = (activeData?.extraPeople || []).filter(p => p.id !== personId);
+        await updateDoc(doc(db, 'users', activeData.id), { extraPeople: updated });
+        try {
+          await deleteDoc(doc(db, 'users', personId));
+        } catch (delErr) {
+          console.warn("Could not delete extra person doc:", delErr);
+        }
+      } catch (err) {
+        console.error("Error deleting extra person:", err);
+        alert("Failed to remove extra person: " + err.message);
+      }
+    }
   }
 
   // Add Item to active profile's wishlist (Rule 5)
@@ -485,9 +503,21 @@ export default function Dashboard() {
                       </div>
                     </div>
 
-                    {member.isBought && (
-                      <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 'bold' }}>Shopped</span>
-                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                      {member.isBought && (
+                        <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 'bold' }}>Shopped</span>
+                      )}
+                      {member.type === 'extra' && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDeleteExtraPerson(member.id, member.name); }}
+                          title="Remove extra person"
+                          data-testid={`delete-extra-${member.id}`}
+                          style={{ background: 'rgba(239,68,68,0.15)', border: 'none', color: '#ef4444', cursor: 'pointer', borderRadius: '6px', padding: '0.3rem', display: 'flex', alignItems: 'center' }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
