@@ -5,6 +5,7 @@ import { collection, getDocs, setDoc, doc, deleteDoc, getDoc } from 'firebase/fi
 import { Link } from 'react-router-dom';
 import { ShieldCheck, UserPlus, Trash2, Mail, Send, Settings, ArrowLeft, RefreshCw, Bug, CheckCircle } from 'lucide-react';
 import { sendInviteEmail, getEmailConfig, saveEmailConfig } from '../utils/emailService';
+import { performDraw } from '../utils/drawUtils';
 import santaScrollIcon from '../assets/santa-scroll.jpg';
 
 export default function Admin() {
@@ -234,60 +235,17 @@ export default function Admin() {
     }
   }
 
-  function shuffle(array) {
-    let currentIndex = array.length, randomIndex;
-    while (currentIndex !== 0) {
-      randomIndex = Math.floor(Math.random() * currentIndex);
-      currentIndex--;
-      [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
-    }
-    return array;
-  }
-
   async function handleDraw() {
-    if (users.length < 3) {
-      alert('Need at least 3 users across families to conduct the draw.');
-      return;
-    }
-
-    let validDraw = false;
-    let attempts = 0;
-    let assignments = {};
-
     setLoading(true);
-    
-    while (!validDraw && attempts < 2000) {
-      attempts++;
-      
-      let shuffledRecipients = [...users];
-      // Run through randomizer minimum of 3 times as requested
-      for (let i = 0; i < 3; i++) {
-        shuffledRecipients = shuffle(shuffledRecipients);
-      }
-      shuffledRecipients = shuffle(shuffledRecipients);
-      
-      validDraw = true;
-      assignments = {};
+    const result = performDraw(users);
 
-      for (let i = 0; i < users.length; i++) {
-        const buyer = users[i];
-        const recipient = shuffledRecipients[i];
-
-        // Rule: Buyer cannot be recipient, and buyer cannot buy for member of same family
-        if (buyer.id === recipient.id || (buyer.familyId && recipient.familyId && buyer.familyId.toLowerCase() === recipient.familyId.toLowerCase())) {
-          validDraw = false;
-          break;
-        }
-
-        assignments[buyer.id] = recipient.id;
-      }
-    }
-
-    if (!validDraw) {
-      alert('Could not find a valid combination where no family member buys for their own family. Please make sure there are enough different families with balanced members.');
+    if (!result.success) {
+      alert(result.message);
       setLoading(false);
       return;
     }
+
+    const { assignments } = result;
 
     try {
       for (const [buyerId, recipientId] of Object.entries(assignments)) {

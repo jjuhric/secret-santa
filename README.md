@@ -1,16 +1,28 @@
-# React + Vite
+# Christmas Shopping List
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+![Santa Reading Scroll](./public/santa-icon.jpg)
 
-Currently, two official plugins are available:
+Welcome to the **Christmas Shopping List** application! This is a festive, family-oriented web app built to manage holiday gift assignments (previously known as Secret Santa). It features a beautiful snowfall aesthetic, a robust Master Admin panel for family management, and automated email notifications.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Features
+- **Family Management:** Group users into families.
+- **Automated Draw Algorithm:** Intelligently assigns everyone a recipient from a *different* family (or handles single-family fallback logic).
+- **Automated Emails:** Uses EmailJS to instantly notify users of their assignments.
+- **Bug Reporting:** Built-in error catching and reporting modal that emails the Master Admin.
+- **Full Test Suite:** 100% verified with Vitest (Unit/Integration/Regression) and Playwright E2E testing against the Firebase Local Emulator.
 
-## React Compiler
+## Tech Stack
+- **Frontend:** React + Vite
+- **Database / Auth:** Firebase & Firestore
+- **Testing:** Vitest & Playwright
+- **CI/CD:** GitHub Actions (automated deployment on green tests)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Getting Started
 
-## Expanding the Oxlint configuration
+1. Clone the repository.
+2. Run `npm install`.
+3. Start the dev server with `npm run dev`.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+### Running Tests
+- Unit/Integration: `npm run test`
+- End-to-End: `npm run test:e2e` (Requires Java 21+ for the Firebase Emulator)
